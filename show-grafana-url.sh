@@ -17,15 +17,11 @@ read_env_value() {
     fi
 }
 
-# Read Grafana password from .env
-GRAFANA_PASSWORD=$(read_env_value "GRAFANA_ADMIN_PASSWORD")
-
 # Display Grafana credentials
 echo "Grafana URL: ${GRAFANA_URL}"
 echo "Grafana Username: admin"
-if [ -n "$GRAFANA_PASSWORD" ]; then
-    echo "Grafana Password: ${GRAFANA_PASSWORD}"
-else
-    echo "Grafana Password: (not set in .env file)"
-fi
+echo "Grafana Password: admin (default - change after first login)"
+echo ""
+echo "Note: If Grafana was already initialized, the password may have been changed."
+echo "      To reset: docker exec -it moad-grafana grafana cli admin reset-admin-password <new_password>"
 
