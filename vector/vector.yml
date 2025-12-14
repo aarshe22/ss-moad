@@ -102,7 +102,7 @@ transforms:
         .event_category = "security"
         
         # Extract username (normalized to match users.userName)
-        .username = match(.message, r'(?:user|username|login)[\s:=]+([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|[a-zA-Z0-9._-]+)') ?? null
+        .username = match(.message, r'(?:user|username|login)[\s:=]+([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|[a-zA-Z0-9._-]+)')
         if !is_null(.username) {
           .username = downcase(.username)
           # Remove email domain if it's an email-style username
@@ -110,13 +110,13 @@ transforms:
         }
         
         # Extract email (normalized to match users.email)
-        .email = match(.message, r'([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})') ?? null
+        .email = match(.message, r'([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})')
         if !is_null(.email) {
           .email = downcase(.email)
         }
         
         # Extract IP address (for users.lastKnownIP correlation)
-        .client_ip = match(.message, r'\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b') ?? null
+        .client_ip = match(.message, r'\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b')
         
         # Auth result (success/failed)
         .auth_result = match(.message, r'(?i)(success|successful|failed|failure|denied|invalid)') ?? "unknown"
@@ -127,8 +127,8 @@ transforms:
         }
         
         # Extract school identifier from URL or context
-        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
-        .school_subdomain = match(.message, r'https?://([a-z0-9-]+)\.schoolsoft\.(?:net|com)') ?? null
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)')
+        .school_subdomain = match(.message, r'https?://([a-z0-9-]+)\.schoolsoft\.(?:net|com)')
       }
       
       # PowerSchool integration events (ConsumerManager)
@@ -137,10 +137,10 @@ transforms:
         .event_category = "integration"
         
         # Extract external SIS identity
-        .sis_identity = match(.message, r'(?:sis|external|powerschool)[\s:=]+([a-zA-Z0-9._-]+)') ?? null
+        .sis_identity = match(.message, r'(?:sis|external|powerschool)[\s:=]+([a-zA-Z0-9._-]+)')
         
         # Extract email (for parents.email join)
-        .email = match(.message, r'([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})') ?? null
+        .email = match(.message, r'([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})')
         if !is_null(.email) {
           .email = downcase(.email)
         }
@@ -152,7 +152,7 @@ transforms:
         }
         
         # Extract school ID (for studentSchool.schoolId join)
-        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)')
         
         # Integration status
         .integration_status = match(.message, r'(?i)(success|failed|error|completed)') ?? "unknown"
@@ -164,13 +164,13 @@ transforms:
         .event_category = "business"
         
         # Extract user ID (for users.id join)
-        .user_id = match(.message, r'(?:user|userId)[\s:=]+(\d+)') ?? null
+        .user_id = match(.message, r'(?:user|userId)[\s:=]+(\d+)')
         
         # Extract school ID (for schools.id join)
-        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)')
         
         # Extract student ID (for students.id join)
-        .student_id = match(.message, r'(?:student|studentId)[\s:=]+(\d+)') ?? null
+        .student_id = match(.message, r'(?:student|studentId)[\s:=]+(\d+)')
       }
       
       # Policy events
@@ -178,9 +178,9 @@ transforms:
         .event_type = "policy"
         .event_category = "business"
         
-        .user_id = match(.message, r'(?:user|userId)[\s:=]+(\d+)') ?? null
-        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
-        .student_id = match(.message, r'(?:student|studentId)[\s:=]+(\d+)') ?? null
+        .user_id = match(.message, r'(?:user|userId)[\s:=]+(\d+)')
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)')
+        .student_id = match(.message, r'(?:student|studentId)[\s:=]+(\d+)')
       }
       
       # PermissionMan form events (CM may also handle forms)
@@ -188,26 +188,26 @@ transforms:
         .event_type = "form"
         .event_category = "business"
         
-        .form_id = match(.message, r'(?:form|formId)[\s:=]+(\d+)') ?? null
-        .user_form_id = match(.message, r'(?:userform|userFormId)[\s:=]+(\d+)') ?? null
-        .user_id = match(.message, r'(?:user|userId)[\s:=]+(\d+)') ?? null
-        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
-        .district_id = match(.message, r'(?:district|districtId)[\s:=]+(\d+)') ?? null
-        .student_id = match(.message, r'(?:student|studentId)[\s:=]+(\d+)') ?? null
-        .form_action = match(.message, r'(?i)(distributed|completed|submitted|expired|archived|created|updated|deleted)') ?? null
-        .form_status = match(.message, r'(?:status|formStatus)[\s:=]+([a-zA-Z0-9_-]+)') ?? null
+        .form_id = match(.message, r'(?:form|formId)[\s:=]+(\d+)')
+        .user_form_id = match(.message, r'(?:userform|userFormId)[\s:=]+(\d+)')
+        .user_id = match(.message, r'(?:user|userId)[\s:=]+(\d+)')
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)')
+        .district_id = match(.message, r'(?:district|districtId)[\s:=]+(\d+)')
+        .student_id = match(.message, r'(?:student|studentId)[\s:=]+(\d+)')
+        .form_action = match(.message, r'(?i)(distributed|completed|submitted|expired|archived|created|updated|deleted)')
+        .form_status = match(.message, r'(?:status|formStatus)[\s:=]+([a-zA-Z0-9_-]+)')
       }
       
       # Integration task events
-      if match(string!(.message), r'(?i)(integrationtask|fullintegration|deltaintegration|sistask)') {
+      if match(.message, r'(?i)(integrationtask|fullintegration|deltaintegration|sistask)') {
         .event_type = "integration_task"
         .event_category = "integration"
         
-        .integration_task_id = match(.message, r'(?:task|taskId|integrationTaskId)[\s:=]+(\d+)') ?? null
-        .integration_type = match(.message, r'(?i)(full|delta|incremental)') ?? null
-        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
-        .district_id = match(.message, r'(?:district|districtId)[\s:=]+(\d+)') ?? null
-        .integration_status = match(.message, r'(?i)(success|failed|error|completed|running|pending)') ?? null
+        .integration_task_id = match(.message, r'(?:task|taskId|integrationTaskId)[\s:=]+(\d+)')
+        .integration_type = match(.message, r'(?i)(full|delta|incremental)')
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)')
+        .district_id = match(.message, r'(?:district|districtId)[\s:=]+(\d+)')
+        .integration_status = match(.message, r'(?i)(success|failed|error|completed|running|pending)')
       }
       
       # Ensure all IDs are integers (for MySQL join compatibility)
@@ -270,31 +270,31 @@ transforms:
       if match(.message, r'(?i)(login|authentication|auth|authenticate)') {
         .event_type = "authentication"
         .event_category = "security"
-        .username = match(.message, r'(?:user|username|login)[\s:=]+([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|[a-zA-Z0-9._-]+)') ?? null
+        .username = match(.message, r'(?:user|username|login)[\s:=]+([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|[a-zA-Z0-9._-]+)')
         if !is_null(.username) {
           .username = downcase(.username)
           .username_normalized = replace(.username, r'@.*$', "")
         }
-        .email = match(.message, r'([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})') ?? null
+        .email = match(.message, r'([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})')
         if !is_null(.email) {
           .email = downcase(.email)
         }
-        .client_ip = match(.message, r'\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b') ?? null
+        .client_ip = match(.message, r'\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b')
         .auth_result = match(.message, r'(?i)(success|successful|failed|failure|denied|invalid)') ?? "unknown"
         if match(.auth_result, r'(?i)(success|successful)') {
           .auth_result = "success"
         } else if match(.auth_result, r'(?i)(failed|failure|denied|invalid)') {
           .auth_result = "failed"
         }
-        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
-        .school_subdomain = match(.message, r'https?://([a-z0-9-]+)\.schoolsoft\.(?:net|com)') ?? null
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)')
+        .school_subdomain = match(.message, r'https?://([a-z0-9-]+)\.schoolsoft\.(?:net|com)')
       }
       
       if match(.message, r'(?i)(powerschool|consumer|sis|integration)') {
         .event_type = "powerschool_integration"
         .event_category = "integration"
-        .sis_identity = match(.message, r'(?:sis|external|powerschool)[\s:=]+([a-zA-Z0-9._-]+)') ?? null
-        .email = match(.message, r'([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})') ?? null
+        .sis_identity = match(.message, r'(?:sis|external|powerschool)[\s:=]+([a-zA-Z0-9._-]+)')
+        .email = match(.message, r'([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})')
         if !is_null(.email) {
           .email = downcase(.email)
         }
@@ -302,24 +302,24 @@ transforms:
         if is_string(.student_ids) {
           .student_ids = [.student_ids]
         }
-        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)')
         .integration_status = match(.message, r'(?i)(success|failed|error|completed)') ?? "unknown"
       }
       
       if match(.message, r'(?i)(conference|round|schedule|timeslot)') {
         .event_type = "conference"
         .event_category = "business"
-        .user_id = match(.message, r'(?:user|userId)[\s:=]+(\d+)') ?? null
-        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
-        .student_id = match(.message, r'(?:student|studentId)[\s:=]+(\d+)') ?? null
+        .user_id = match(.message, r'(?:user|userId)[\s:=]+(\d+)')
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)')
+        .student_id = match(.message, r'(?:student|studentId)[\s:=]+(\d+)')
       }
       
       if match(.message, r'(?i)(policy|policyresponse)') {
         .event_type = "policy"
         .event_category = "business"
-        .user_id = match(.message, r'(?:user|userId)[\s:=]+(\d+)') ?? null
-        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
-        .student_id = match(.message, r'(?:student|studentId)[\s:=]+(\d+)') ?? null
+        .user_id = match(.message, r'(?:user|userId)[\s:=]+(\d+)')
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)')
+        .student_id = match(.message, r'(?:student|studentId)[\s:=]+(\d+)')
       }
       
       # PermissionMan form events (PFM application)
@@ -328,30 +328,30 @@ transforms:
         .event_category = "business"
         
         # Extract form-related identifiers
-        .form_id = match(.message, r'(?:form|formId)[\s:=]+(\d+)') ?? null
-        .user_form_id = match(.message, r'(?:userform|userFormId)[\s:=]+(\d+)') ?? null
-        .user_id = match(.message, r'(?:user|userId)[\s:=]+(\d+)') ?? null
-        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
-        .district_id = match(.message, r'(?:district|districtId)[\s:=]+(\d+)') ?? null
-        .student_id = match(.message, r'(?:student|studentId)[\s:=]+(\d+)') ?? null
+        .form_id = match(.message, r'(?:form|formId)[\s:=]+(\d+)')
+        .user_form_id = match(.message, r'(?:userform|userFormId)[\s:=]+(\d+)')
+        .user_id = match(.message, r'(?:user|userId)[\s:=]+(\d+)')
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)')
+        .district_id = match(.message, r'(?:district|districtId)[\s:=]+(\d+)')
+        .student_id = match(.message, r'(?:student|studentId)[\s:=]+(\d+)')
         
         # Form action types
-        .form_action = match(.message, r'(?i)(distributed|completed|submitted|expired|archived|created|updated|deleted)') ?? null
+        .form_action = match(.message, r'(?i)(distributed|completed|submitted|expired|archived|created|updated|deleted)')
         
         # Form status
-        .form_status = match(.message, r'(?:status|formStatus)[\s:=]+([a-zA-Z0-9_-]+)') ?? null
+        .form_status = match(.message, r'(?:status|formStatus)[\s:=]+([a-zA-Z0-9_-]+)')
       }
       
       # Integration task events (FullIntegrationTask, DeltaIntegrationTask)
-      if match(string!(.message), r'(?i)(integrationtask|fullintegration|deltaintegration|sistask)') {
+      if match(.message, r'(?i)(integrationtask|fullintegration|deltaintegration|sistask)') {
         .event_type = "integration_task"
         .event_category = "integration"
         
-        .integration_task_id = match(.message, r'(?:task|taskId|integrationTaskId)[\s:=]+(\d+)') ?? null
-        .integration_type = match(.message, r'(?i)(full|delta|incremental)') ?? null
-        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
-        .district_id = match(.message, r'(?:district|districtId)[\s:=]+(\d+)') ?? null
-        .integration_status = match(.message, r'(?i)(success|failed|error|completed|running|pending)') ?? null
+        .integration_task_id = match(.message, r'(?:task|taskId|integrationTaskId)[\s:=]+(\d+)')
+        .integration_type = match(.message, r'(?i)(full|delta|incremental)')
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)')
+        .district_id = match(.message, r'(?:district|districtId)[\s:=]+(\d+)')
+        .integration_status = match(.message, r'(?i)(success|failed|error|completed|running|pending)')
       }
       
       if !is_null(.user_id) {
@@ -500,13 +500,13 @@ transforms:
       .event_category = "communication"
       
       # Extract recipient email (normalized for users.email and parents.email join)
-      .recipient_email = match(.message, r'to=<([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>') ?? null
+      .recipient_email = match(.message, r'to=<([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>')
       if !is_null(.recipient_email) {
         .recipient_email = downcase(.recipient_email)
       }
       
       # Extract sender
-      .sender_email = match(.message, r'from=<([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>') ?? null
+      .sender_email = match(.message, r'from=<([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>')
       if !is_null(.sender_email) {
         .sender_email = downcase(.sender_email)
       }
@@ -524,7 +524,7 @@ transforms:
       }
       
       # Extract message ID for correlation
-      .message_id = match(.message, r'message-id=<([^>]+)>') ?? null
+      .message_id = match(.message, r'message-id=<([^>]+)>')
       
       .source_component = "postfix"
       .host = get_env_var("HOSTNAME") ?? "app1"
@@ -538,11 +538,11 @@ transforms:
       .timestamp = parse_timestamp!(.message, format: "%b %d %H:%M:%S") ?? now()
       .event_type = "email"
       .event_category = "communication"
-      .recipient_email = match(.message, r'to=<([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>') ?? null
+      .recipient_email = match(.message, r'to=<([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>')
       if !is_null(.recipient_email) {
         .recipient_email = downcase(.recipient_email)
       }
-      .sender_email = match(.message, r'from=<([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>') ?? null
+      .sender_email = match(.message, r'from=<([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>')
       if !is_null(.sender_email) {
         .sender_email = downcase(.sender_email)
       }
@@ -556,7 +556,7 @@ transforms:
       } else if match(.message, r'(?i)(reject|rejected)') {
         .email_outcome = "rejected"
       }
-      .message_id = match(.message, r'message-id=<([^>]+)>') ?? null
+      .message_id = match(.message, r'message-id=<([^>]+)>')
       .source_component = "postfix"
       .host = get_env_var("HOSTNAME") ?? "app2"
       .app = "PFM"
