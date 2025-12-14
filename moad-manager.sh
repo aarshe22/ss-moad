@@ -17,6 +17,73 @@ GRAFANA_URL="${GRAFANA_URL:-http://dev1.schoolsoft.net:3000}"
 PROMETHEUS_URL="${PROMETHEUS_URL:-http://dev1.schoolsoft.net:9090}"
 LOKI_URL="${LOKI_URL:-http://dev1.schoolsoft.net:3100}"
 
+# Lock file for single instance
+LOCK_FILE="${LOCK_FILE:-/tmp/moad-manager.lock}"
+LOCK_PID_FILE="${LOCK_PID_FILE:-/tmp/moad-manager.pid}"
+
+# ============================================================================
+# LOCK FILE MANAGEMENT
+# ============================================================================
+
+# Function to check and acquire lock
+acquire_lock() {
+    # Check if lock file exists
+    if [ -f "$LOCK_FILE" ]; then
+        # Check if the process is still running
+        if [ -f "$LOCK_PID_FILE" ]; then
+            local lock_pid
+            lock_pid=$(cat "$LOCK_PID_FILE" 2>/dev/null)
+            if [ -n "$lock_pid" ] && kill -0 "$lock_pid" 2>/dev/null; then
+                # Process is still running
+                echo -e "${RED}Error: MOAD Manager is already running (PID: $lock_pid)${NC}"
+                echo -e "${YELLOW}If you believe this is a stale lock, you can remove it manually:${NC}"
+                echo -e "  rm -f $LOCK_FILE $LOCK_PID_FILE"
+                exit 1
+            else
+                # Stale lock - process is not running
+                echo -e "${YELLOW}Warning: Found stale lock file. Cleaning up...${NC}"
+                rm -f "$LOCK_FILE" "$LOCK_PID_FILE"
+            fi
+        else
+            # Lock file exists but no PID file - stale lock
+            echo -e "${YELLOW}Warning: Found stale lock file. Cleaning up...${NC}"
+            rm -f "$LOCK_FILE"
+        fi
+    fi
+    
+    # Create lock file
+    touch "$LOCK_FILE" 2>/dev/null || {
+        echo -e "${RED}Error: Cannot create lock file: $LOCK_FILE${NC}"
+        exit 1
+    }
+    
+    # Write PID to lock file
+    echo $$ > "$LOCK_PID_FILE" 2>/dev/null || {
+        echo -e "${RED}Error: Cannot create PID file: $LOCK_PID_FILE${NC}"
+        rm -f "$LOCK_FILE"
+        exit 1
+    }
+}
+
+# Function to release lock on exit
+release_lock() {
+    rm -f "$LOCK_FILE" "$LOCK_PID_FILE"
+}
+
+# Trap to ensure lock is released on exit
+# Function to cleanup on exit (used by trap)
+cleanup_on_exit() {
+    release_lock
+    clear
+    exit 0
+}
+
+# Trap to ensure lock is released on exit
+trap 'cleanup_on_exit' INT TERM EXIT
+
+# Acquire lock at startup
+acquire_lock
+
 # Function to check and install required package
 check_and_install_package() {
     local package=$1
@@ -495,6 +562,23 @@ start_all_containers() {
     
     # If no containers exist at all, we need to create them
     if [ -z "$all_containers" ]; then
+        # Validate environment variables before creating containers
+        local validation_result
+        validation_result=$(validate_env_variables 2>&1)
+        local validation_status=$?
+        
+        if [ $validation_status -ne 0 ]; then
+            if echo "$validation_result" | grep -q "MISSING_ENV_FILE"; then
+                dialog --stdout --msgbox "Error: .env file not found.\n\nPlease use 'Generate .env File' option first." 10 50 2>&1 >/dev/null
+                return
+            elif echo "$validation_result" | grep -q "MISSING_VARS"; then
+                local missing_vars
+                missing_vars=$(echo "$validation_result" | sed 's/.*MISSING_VARS://')
+                dialog --stdout --msgbox "Error: Missing required environment variables:\n\n$missing_vars\n\nPlease use 'Generate .env File' option." 12 60 2>&1 >/dev/null
+                return
+            fi
+        fi
+        
         dialog --stdout --yesno "No containers exist. Create and start all MOAD containers?\n\nThis will create and start:\n- vector\n- loki\n- prometheus\n- mysqld-exporter\n- grafana" 12 60 2>&1 >/dev/null
         if [ $? -eq 0 ]; then
             local result=1
@@ -675,6 +759,23 @@ start_all_containers() {
 
 # Function to create and start containers (build if needed)
 create_and_start_containers() {
+    # Validate environment variables first
+    local validation_result
+    validation_result=$(validate_env_variables 2>&1)
+    local validation_status=$?
+    
+    if [ $validation_status -ne 0 ]; then
+        if echo "$validation_result" | grep -q "MISSING_ENV_FILE"; then
+            dialog --stdout --msgbox "Error: .env file not found.\n\nPlease use 'Generate .env File' option first." 10 50 2>&1 >/dev/null
+            return
+        elif echo "$validation_result" | grep -q "MISSING_VARS"; then
+            local missing_vars
+            missing_vars=$(echo "$validation_result" | sed 's/.*MISSING_VARS://')
+            dialog --stdout --msgbox "Error: Missing required environment variables in .env file:\n\n$missing_vars\n\nPlease use 'Generate .env File' option to update." 12 60 2>&1 >/dev/null
+            return
+        fi
+    fi
+    
     # Always get fresh container list
     local all_containers
     all_containers=$(get_all_containers)
@@ -2004,8 +2105,8 @@ main_menu() {
     done
 }
 
-# Trap Ctrl-C to exit gracefully
-trap 'clear; echo "Exiting MOAD Manager..."; exit 0' INT TERM
+# Override trap to include lock cleanup
+# Trap already set above - this line removed to avoid duplicate
 
 # Start the menu
 main_menu

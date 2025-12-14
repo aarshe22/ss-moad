@@ -60,6 +60,8 @@ services:
     image: prom/mysqld-exporter:v0.15.1
     container_name: moad-mysqld-exporter
     environment:
+      # DATA_SOURCE_NAME format: user:password@tcp(host:port)/
+      # Note: If password contains special characters, they may need URL encoding
       DATA_SOURCE_NAME: "${MYSQL_MOAD_RO_USER}:${MYSQL_MOAD_RO_PASSWORD}@tcp(${MYSQL_HOST}:3306)/"
     ports:
       - "9104:9104"
@@ -69,6 +71,8 @@ services:
     # Note: MYSQL_HOST must be set in .env file (IP address or hostname of MySQL server)
     # Note: MYSQL_MOAD_RO_USER must be set in .env file (default: moad_ro)
     # Note: MYSQL_MOAD_RO_PASSWORD must be set in .env file
+    # Note: Docker Compose automatically loads .env file for variable substitution
+    # Note: If variables are empty, the container will fail to start - check .env file
 
   # Grafana - Visualization and dashboards
   grafana:
