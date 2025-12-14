@@ -79,7 +79,7 @@ docker compose ps
 docker logs moad-vector | tail -20
 
 # Check structured logs are being created
-ls -la vector/structured/
+ls -la data/vector/structured/
 
 # Query Loki for events
 curl -G "http://localhost:3100/loki/api/v1/query" \
@@ -91,7 +91,7 @@ curl -G "http://localhost:3100/loki/api/v1/query" \
 
 ```bash
 # View structured logs with join hints
-cat vector/structured/*.jsonl 2>/dev/null | jq 'select(.mysql_joins != null) | {event_type, mysql_joins, mysql_join_school_id}' | head -10
+cat data/vector/structured/*.jsonl 2>/dev/null | jq 'select(.mysql_joins != null) | {event_type, mysql_joins, mysql_join_school_id}' | head -10
 ```
 
 ## Troubleshooting

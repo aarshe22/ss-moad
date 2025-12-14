@@ -9,9 +9,13 @@
 - [x] `prometheus/prometheus.yml` - Metrics collection config
 - [x] `grafana/provisioning/datasources/datasources.yml` - Grafana datasources
 - [x] `grafana/provisioning/dashboards/dashboards.yml` - Dashboard provisioning
-- [x] `grafana/dashboards/authentication-failures.json` - Sample dashboard
+- [x] `grafana/dashboards/` - Dashboard JSON files (4 dashboards)
 - [x] `README.md` - Project documentation
-- [x] `docs/` - All documentation files
+- [x] `QUICK_START.md` - Quick deployment guide
+- [x] `DEPLOYMENT_CHECKLIST.md` - Comprehensive deployment checklist
+- [x] `CLEANUP.md` - Docker cleanup commands
+- [x] `docs/` - Technical documentation (5 files)
+- [x] `data/vector/structured/` - Structured logs directory (created at runtime, git-ignored)
 
 ### ⚠️ Required Environment Setup
 
@@ -135,7 +139,7 @@ docker logs moad-grafana
 docker logs moad-vector | grep -i "error"
 
 # Check structured logs are being created
-ls -la vector/structured/
+ls -la data/vector/structured/
 ```
 
 ### 2. Loki Ingestion
@@ -161,7 +165,7 @@ curl http://localhost:9104/metrics | grep mysql_up
 ### 5. Join Compatibility
 ```bash
 # Check structured logs for join hints
-cat vector/structured/*.jsonl | jq 'select(.mysql_joins != null)' | head -5
+cat data/vector/structured/*.jsonl | jq 'select(.mysql_joins != null)' | head -5
 ```
 
 ## Known Issues & Notes

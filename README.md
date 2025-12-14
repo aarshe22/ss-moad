@@ -162,12 +162,24 @@ docker compose up -d
 - `loki/loki-config.yml`: Log aggregation configuration
 - `prometheus/prometheus.yml`: Metrics collection
 - `grafana/provisioning/`: Grafana datasources and dashboards
+- `data/vector/structured/`: Structured logs output directory (local, git-ignored)
 
 ## Documentation
 
+**Getting Started:**
+- [QUICK_START.md](QUICK_START.md): Quick deployment guide
+- [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md): Comprehensive deployment checklist
+- [CLEANUP.md](CLEANUP.md): Docker cleanup commands
+
+**Technical Documentation:**
 - [JOIN_COMPATIBILITY.md](docs/JOIN_COMPATIBILITY.md): Detailed design of join compatibility
 - [SCHEMA_MAPPING.md](docs/SCHEMA_MAPPING.md): Complete mapping of log fields to MySQL columns
 - [MYSQL_MONITORING.md](docs/MYSQL_MONITORING.md): MySQL performance and application analytics
+- [VALIDATION_GUIDE.md](docs/VALIDATION_GUIDE.md): Validation procedures for join compatibility
+- [IDENTIFIER_EXTRACTION_REFERENCE.md](docs/IDENTIFIER_EXTRACTION_REFERENCE.md): Identifier extraction patterns reference
+
+**Change History:**
+- [CHANGELOG_MYSQL_MONITORING.md](CHANGELOG_MYSQL_MONITORING.md): MySQL monitoring extension changelog
 
 ## Success Criteria
 
