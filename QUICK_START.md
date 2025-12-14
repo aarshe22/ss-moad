@@ -27,13 +27,21 @@ EOF
 
 **Note:** `MYSQL_MOAD_RO_PASSWORD` is for the `moad_ro` MySQL user (read-only access to schoolsoft and permissionMan databases).
 
-## 3. Update MySQL Host
+## 3. Configure MySQL Host Alias
 
-Edit `docker-compose.yml` line 56, replace `mysql-host` with your actual MySQL hostname or IP:
+Add `mysql-host` as an alias in your Docker host's `/etc/hosts` file:
 
-```yaml
-DATA_SOURCE_NAME: "exporter:${MYSQL_EXPORTER_PASSWORD}@(your-mysql-host:3306)/schoolsoft"
+```bash
+# Edit /etc/hosts (requires sudo)
+sudo nano /etc/hosts
+
+# Add a line like this (replace with your actual MySQL hostname or IP):
+# 192.168.1.100  mysql-host
+# OR
+# mysql-server.example.com  mysql-host
 ```
+
+**Note:** The `docker-compose.yml` uses `mysql-host` as the hostname. By adding it to `/etc/hosts`, Docker containers will resolve it to your actual MySQL server without needing to edit the compose file.
 
 ## 4. Verify Log Paths
 

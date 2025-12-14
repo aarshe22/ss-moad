@@ -44,7 +44,7 @@ Ensure `/data/moad/logs` is accessible:
 
 #### 3. MySQL Database Access
 - MySQL host accessible from `mysqld-exporter` container
-- Update `docker-compose.yml` line 56: Replace `mysql-host` with actual hostname/IP
+- Add `mysql-host` alias to Docker host `/etc/hosts` file (see deployment steps below)
 - MySQL user `moad_ro` exists with read-only permissions:
   - `SELECT ON schoolsoft.*`
   - `SELECT ON permissionMan.*`
@@ -74,11 +74,20 @@ cp .env.example .env
 # Edit .env with actual values
 ```
 
-### 3. Update MySQL Host
-Edit `docker-compose.yml` line 56:
-```yaml
-DATA_SOURCE_NAME: "exporter:${MYSQL_EXPORTER_PASSWORD}@(your-mysql-host:3306)/schoolsoft"
+### 3. Configure MySQL Host Alias
+Add `mysql-host` as an alias in your Docker host's `/etc/hosts` file:
+
+```bash
+# Edit /etc/hosts (requires sudo)
+sudo nano /etc/hosts
+
+# Add a line like this (replace with your actual MySQL hostname or IP):
+# 192.168.1.100  mysql-host
+# OR if using a hostname:
+# mysql-server.example.com  mysql-host
 ```
+
+**Note:** The `docker-compose.yml` uses `mysql-host` as the hostname. By adding it to `/etc/hosts`, Docker containers will resolve it to your actual MySQL server. This avoids needing to edit the compose file.
 
 ### 4. Verify Log Paths
 Check that log files exist:
@@ -168,7 +177,7 @@ cat vector/structured/*.jsonl | jq 'select(.mysql_joins != null)' | head -5
 
 ### MySQL Exporter
 - Requires MySQL host to be accessible from container network
-- Update `mysql-host` placeholder in docker-compose.yml
+- Add `mysql-host` alias to Docker host `/etc/hosts` file (see deployment steps)
 
 ## Troubleshooting
 
