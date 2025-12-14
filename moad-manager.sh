@@ -229,6 +229,13 @@ get_container_status_from_docker() {
     local status
     local stderr_output
     
+    # Check if container exists first (more efficient)
+    if ! docker ps -a --format "{{.Names}}" 2>/dev/null | grep -q "^${container}$"; then
+        echo "not_found"
+        return
+    fi
+    
+    # Get status
     stderr_output=$(docker inspect --format='{{.State.Status}}' "$container" 2>&1 >/dev/null)
     status=$(docker inspect --format='{{.State.Status}}' "$container" 2>/dev/null || echo "unknown")
     
@@ -236,7 +243,12 @@ get_container_status_from_docker() {
         log_error "get_container_status_from_docker" "$stderr_output" "$container"
     fi
     
-    echo "$status"
+    # Return "unknown" if status is empty or null
+    if [ -z "$status" ] || [ "$status" = "null" ]; then
+        echo "unknown"
+    else
+        echo "$status"
+    fi
 }
 
 # ============================================================================
@@ -432,32 +444,38 @@ stop_all_containers() {
             local percent=$((container_num * 100 / total))
             local display_name=$(echo "$container" | sed 's/^moad-//')
             
+            # Show progress
             {
                 echo "XXX"
                 echo "$percent"
                 echo "Stopping $display_name ($container_num/$total)..."
                 echo "XXX"
-                
-                local stderr_output
-                stderr_output=$(docker compose stop "$container" 2>&1)
-                local result=$?
-                
-                if [ $result -eq 0 ]; then
-                    success_count=$((success_count + 1))
+            } | dialog --colors --gauge "Stopping containers... ($container_num/$total)" 8 60 0
+            
+            # Execute command outside subshell so variables persist
+            local stderr_output
+            stderr_output=$(docker compose stop "$container" 2>&1)
+            local result=$?
+            
+            if [ $result -eq 0 ]; then
+                success_count=$((success_count + 1))
+                {
                     echo "XXX"
                     echo "$percent"
                     echo "✓ $display_name stopped"
                     echo "XXX"
-                else
-                    fail_count=$((fail_count + 1))
-                    failed_containers+=("$container")
-                    log_command_error "stop_all_containers" "docker compose stop $container" "$container" "$result" "$stderr_output"
+                } | dialog --colors --gauge "Stopping containers... ($container_num/$total)" 8 60 0
+            else
+                fail_count=$((fail_count + 1))
+                failed_containers+=("$container")
+                log_command_error "stop_all_containers" "docker compose stop $container" "$container" "$result" "$stderr_output"
+                {
                     echo "XXX"
                     echo "$percent"
                     echo "✗ $display_name failed"
                     echo "XXX"
-                fi
-            } | dialog --colors --gauge "Stopping containers... ($container_num/$total)" 8 60 0
+                } | dialog --colors --gauge "Stopping containers... ($container_num/$total)" 8 60 0
+            fi
         done
         
         if [ $fail_count -eq 0 ]; then
@@ -520,38 +538,45 @@ start_all_containers() {
                 local fail_count=0
                 local failed_containers=()
                 
-                {
-                    for i in "${!expected_containers[@]}"; do
-                        local container="${expected_containers[$i]}"
-                        local container_num=$((i + 1))
-                        local percent=$((container_num * 100 / total))
-                        local display_name=$(echo "$container" | sed 's/^moad-//')
-                        local status
-                        status=$(get_container_status_from_docker "$container")
-                        
+                # Verify each container (variables must be updated outside subshell)
+                for i in "${!expected_containers[@]}"; do
+                    local container="${expected_containers[$i]}"
+                    local container_num=$((i + 1))
+                    local percent=$((container_num * 100 / total))
+                    local display_name=$(echo "$container" | sed 's/^moad-//')
+                    local status
+                    status=$(get_container_status_from_docker "$container")
+                    
+                    {
                         echo "XXX"
                         echo "$percent"
                         echo "Checking $display_name ($container_num/$total)..."
                         echo "XXX"
-                        sleep 0.3
-                        
-                        if [ "$status" = "running" ]; then
-                            success_count=$((success_count + 1))
+                    } | dialog --colors --gauge "Verifying containers..." 8 60 0
+                    
+                    if [ "$status" = "running" ]; then
+                        success_count=$((success_count + 1))
+                        {
                             echo "XXX"
                             echo "$percent"
                             echo "✓ $display_name: running"
                             echo "XXX"
-                        else
-                            fail_count=$((fail_count + 1))
-                            failed_containers+=("$container ($status)")
-                            log_error "start_all_containers" "Container $container status: $status" "$container"
+                        } | dialog --colors --gauge "Verifying containers..." 8 60 0
+                    else
+                        fail_count=$((fail_count + 1))
+                        failed_containers+=("$container ($status)")
+                        log_error "start_all_containers" "Container $container status: $status" "$container"
+                        {
                             echo "XXX"
                             echo "$percent"
                             echo "✗ $display_name: $status"
                             echo "XXX"
-                        fi
-                    done
-                    
+                        } | dialog --colors --gauge "Verifying containers..." 8 60 0
+                    fi
+                done
+                
+                # Final status
+                {
                     echo "XXX"
                     echo "100"
                     if [ $fail_count -eq 0 ]; then
@@ -563,6 +588,7 @@ start_all_containers() {
                     sleep 1
                 } | dialog --colors --gauge "Verifying containers..." 8 60 0
                 
+                # Show final result (variables now have correct values)
                 if [ $fail_count -eq 0 ]; then
                     dialog --stdout --msgbox "All containers created and started successfully!\n\nStarted: $success_count container(s)" 10 50 2>&1 >/dev/null
                 else
@@ -604,32 +630,38 @@ start_all_containers() {
             local percent=$((container_num * 100 / total))
             local display_name=$(echo "$container" | sed 's/^moad-//')
             
+            # Show progress
             {
                 echo "XXX"
                 echo "$percent"
                 echo "Starting $display_name ($container_num/$total)..."
                 echo "XXX"
-                
-                local stderr_output
-                stderr_output=$(docker compose start "$container" 2>&1)
-                local result=$?
-                
-                if [ $result -eq 0 ]; then
-                    success_count=$((success_count + 1))
+            } | dialog --colors --gauge "Starting containers... ($container_num/$total)" 8 60 0
+            
+            # Execute command outside subshell so variables persist
+            local stderr_output
+            stderr_output=$(docker compose start "$container" 2>&1)
+            local result=$?
+            
+            if [ $result -eq 0 ]; then
+                success_count=$((success_count + 1))
+                {
                     echo "XXX"
                     echo "$percent"
                     echo "✓ $display_name started"
                     echo "XXX"
-                else
-                    fail_count=$((fail_count + 1))
-                    failed_containers+=("$container")
-                    log_command_error "start_all_containers" "docker compose start $container" "$container" "$result" "$stderr_output"
+                } | dialog --colors --gauge "Starting containers... ($container_num/$total)" 8 60 0
+            else
+                fail_count=$((fail_count + 1))
+                failed_containers+=("$container")
+                log_command_error "start_all_containers" "docker compose start $container" "$container" "$result" "$stderr_output"
+                {
                     echo "XXX"
                     echo "$percent"
                     echo "✗ $display_name failed"
                     echo "XXX"
-                fi
-            } | dialog --colors --gauge "Starting containers... ($container_num/$total)" 8 60 0
+                } | dialog --colors --gauge "Starting containers... ($container_num/$total)" 8 60 0
+            fi
         done
         
         if [ $fail_count -eq 0 ]; then
@@ -789,46 +821,56 @@ create_and_start_containers() {
     local fail_count=0
     local failed_containers=()
     
-    {
-        for i in "${!expected_containers[@]}"; do
-            local container="${expected_containers[$i]}"
-            local container_num=$((i + 1))
-            local percent=$((container_num * 100 / total))
-            local display_name=$(echo "$container" | sed 's/^moad-//')
-            local status
-            status=$(get_container_status_from_docker "$container")
-            
+    # Verify each container and capture results
+    for i in "${!expected_containers[@]}"; do
+        local container="${expected_containers[$i]}"
+        local container_num=$((i + 1))
+        local percent=$((container_num * 100 / total))
+        local display_name=$(echo "$container" | sed 's/^moad-//')
+        local status
+        status=$(get_container_status_from_docker "$container")
+        
+        {
             echo "XXX"
             echo "$percent"
             echo "Checking $display_name ($container_num/$total)..."
             echo "XXX"
-            sleep 0.5
-            
-            if [ "$status" = "running" ]; then
-                success_count=$((success_count + 1))
+            sleep 0.3
+        } | dialog --colors --gauge "Verifying containers... (Step 4/4)" 8 60 0
+        
+        if [ "$status" = "running" ]; then
+            success_count=$((success_count + 1))
+            {
                 echo "XXX"
                 echo "$percent"
                 echo "✓ $display_name: running"
                 echo "XXX"
-            elif [ "$status" = "not_found" ]; then
-                fail_count=$((fail_count + 1))
-                failed_containers+=("$container (not found)")
-                log_error "create_and_start_containers" "Container $container not found after creation" "$container"
+            } | dialog --colors --gauge "Verifying containers... (Step 4/4)" 8 60 0
+        elif [ "$status" = "not_found" ]; then
+            fail_count=$((fail_count + 1))
+            failed_containers+=("$container (not found)")
+            log_error "create_and_start_containers" "Container $container not found after creation" "$container"
+            {
                 echo "XXX"
                 echo "$percent"
                 echo "✗ $display_name: not found"
                 echo "XXX"
-            else
-                fail_count=$((fail_count + 1))
-                failed_containers+=("$container ($status)")
-                log_error "create_and_start_containers" "Container $container status: $status" "$container"
+            } | dialog --colors --gauge "Verifying containers... (Step 4/4)" 8 60 0
+        else
+            fail_count=$((fail_count + 1))
+            failed_containers+=("$container ($status)")
+            log_error "create_and_start_containers" "Container $container status: $status" "$container"
+            {
                 echo "XXX"
                 echo "$percent"
                 echo "✗ $display_name: $status"
                 echo "XXX"
-            fi
-        done
-        
+            } | dialog --colors --gauge "Verifying containers... (Step 4/4)" 8 60 0
+        fi
+    done
+    
+    # Final status
+    {
         echo "XXX"
         echo "100"
         if [ $fail_count -eq 0 ]; then
@@ -840,6 +882,7 @@ create_and_start_containers() {
         sleep 1
     } | dialog --colors --gauge "Verifying containers... (Step 4/4)" 8 60 0
     
+    # Show final result
     if [ $fail_count -eq 0 ]; then
         dialog --stdout --msgbox "All containers created and started successfully!\n\nStarted: $success_count container(s)" 10 50 2>&1 >/dev/null
     else
@@ -879,32 +922,38 @@ restart_all_containers() {
             local percent=$((container_num * 100 / total))
             local display_name=$(echo "$container" | sed 's/^moad-//')
             
+            # Show progress
             {
                 echo "XXX"
                 echo "$percent"
                 echo "Restarting $display_name ($container_num/$total)..."
                 echo "XXX"
-                
-                local stderr_output
-                stderr_output=$(docker compose restart "$container" 2>&1)
-                local result=$?
-                
-                if [ $result -eq 0 ]; then
-                    success_count=$((success_count + 1))
+            } | dialog --colors --gauge "Restarting containers... ($container_num/$total)" 8 60 0
+            
+            # Execute command outside subshell so variables persist
+            local stderr_output
+            stderr_output=$(docker compose restart "$container" 2>&1)
+            local result=$?
+            
+            if [ $result -eq 0 ]; then
+                success_count=$((success_count + 1))
+                {
                     echo "XXX"
                     echo "$percent"
                     echo "✓ $display_name restarted"
                     echo "XXX"
-                else
-                    fail_count=$((fail_count + 1))
-                    failed_containers+=("$container")
-                    log_command_error "restart_all_containers" "docker compose restart $container" "$container" "$result" "$stderr_output"
+                } | dialog --colors --gauge "Restarting containers... ($container_num/$total)" 8 60 0
+            else
+                fail_count=$((fail_count + 1))
+                failed_containers+=("$container")
+                log_command_error "restart_all_containers" "docker compose restart $container" "$container" "$result" "$stderr_output"
+                {
                     echo "XXX"
                     echo "$percent"
                     echo "✗ $display_name failed"
                     echo "XXX"
-                fi
-            } | dialog --colors --gauge "Restarting containers... ($container_num/$total)" 8 60 0
+                } | dialog --colors --gauge "Restarting containers... ($container_num/$total)" 8 60 0
+            fi
         done
         
         if [ $fail_count -eq 0 ]; then
