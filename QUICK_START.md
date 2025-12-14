@@ -6,6 +6,16 @@
 2. Access to `/data/moad/logs` (NFS mount with log files)
 3. MySQL database accessible for metrics
 4. Ports 3000, 3100, 9090, 9104 available
+5. **Required Ubuntu/Debian packages:**
+   - `dialog` - For MOAD Manager UI (will prompt to install if missing)
+   - `jq` - For JSON processing in backup/restore (will prompt to install if missing)
+   - `coreutils` - For base64, numfmt, and other utilities (usually pre-installed)
+
+**Install required packages:**
+```bash
+sudo apt-get update
+sudo apt-get install -y dialog jq
+```
 
 ## 1. Clone Repository
 

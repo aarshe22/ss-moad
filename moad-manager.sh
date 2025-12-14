@@ -17,58 +17,95 @@ GRAFANA_URL="${GRAFANA_URL:-http://dev1.schoolsoft.net:3000}"
 PROMETHEUS_URL="${PROMETHEUS_URL:-http://dev1.schoolsoft.net:9090}"
 LOKI_URL="${LOKI_URL:-http://dev1.schoolsoft.net:3100}"
 
-# Check if dialog is installed
-USE_DIALOG=false
-if command -v dialog >/dev/null 2>&1; then
-    USE_DIALOG=true
-else
-    echo -e "${YELLOW}Note: 'dialog' not found. This script requires dialog.${NC}"
-    echo -e "${BLUE}Please install dialog:${NC}"
+# Function to check and install required package
+check_and_install_package() {
+    local package=$1
+    local required=$2  # "required" or "optional"
+    
+    if command -v "$package" >/dev/null 2>&1; then
+        return 0
+    fi
+    
+    echo -e "${YELLOW}Note: '$package' not found.${NC}"
+    if [ "$required" = "required" ]; then
+        echo -e "${BLUE}This script requires $package.${NC}"
+    else
+        echo -e "${BLUE}Some features require $package.${NC}"
+    fi
     echo ""
     
     # Detect package manager
     if command -v apt-get >/dev/null 2>&1; then
-        echo -e "  ${GREEN}sudo apt-get install -y dialog${NC}"
-        read -p "Install dialog now? (yes/no) [no]: " install_dialog
-        install_dialog=${install_dialog:-no}
+        echo -e "  ${GREEN}sudo apt-get install -y $package${NC}"
+        read -p "Install $package now? (yes/no) [no]: " install_pkg
+        install_pkg=${install_pkg:-no}
         
-        if [ "$install_dialog" = "yes" ]; then
-            echo "Installing dialog..."
-            if sudo apt-get install -y dialog >/dev/null 2>&1; then
-                USE_DIALOG=true
-                echo -e "${GREEN}Dialog installed successfully!${NC}"
+        if [ "$install_pkg" = "yes" ]; then
+            echo "Installing $package..."
+            if sudo apt-get install -y "$package" >/dev/null 2>&1; then
+                echo -e "${GREEN}$package installed successfully!${NC}"
                 echo ""
+                return 0
             else
-                echo -e "${RED}Failed to install dialog. Exiting.${NC}"
-                exit 1
+                echo -e "${RED}Failed to install $package.${NC}"
+                if [ "$required" = "required" ]; then
+                    echo "Exiting."
+                    exit 1
+                fi
+                return 1
             fi
         else
-            echo "Dialog is required for this script. Exiting."
-            exit 1
+            if [ "$required" = "required" ]; then
+                echo "$package is required for this script. Exiting."
+                exit 1
+            fi
+            return 1
         fi
     elif command -v yum >/dev/null 2>&1; then
-        echo -e "  ${GREEN}sudo yum install -y dialog${NC}"
-        read -p "Install dialog now? (yes/no) [no]: " install_dialog
-        install_dialog=${install_dialog:-no}
+        echo -e "  ${GREEN}sudo yum install -y $package${NC}"
+        read -p "Install $package now? (yes/no) [no]: " install_pkg
+        install_pkg=${install_pkg:-no}
         
-        if [ "$install_dialog" = "yes" ]; then
-            echo "Installing dialog..."
-            if sudo yum install -y dialog >/dev/null 2>&1; then
-                USE_DIALOG=true
-                echo -e "${GREEN}Dialog installed successfully!${NC}"
+        if [ "$install_pkg" = "yes" ]; then
+            echo "Installing $package..."
+            if sudo yum install -y "$package" >/dev/null 2>&1; then
+                echo -e "${GREEN}$package installed successfully!${NC}"
                 echo ""
+                return 0
             else
-                echo -e "${RED}Failed to install dialog. Exiting.${NC}"
-                exit 1
+                echo -e "${RED}Failed to install $package.${NC}"
+                if [ "$required" = "required" ]; then
+                    echo "Exiting."
+                    exit 1
+                fi
+                return 1
             fi
         else
-            echo "Dialog is required for this script. Exiting."
-            exit 1
+            if [ "$required" = "required" ]; then
+                echo "$package is required for this script. Exiting."
+                exit 1
+            fi
+            return 1
         fi
     else
-        echo -e "${YELLOW}Please install 'dialog' using your system's package manager.${NC}"
-        exit 1
+        echo -e "${RED}Could not detect package manager. Please install $package manually.${NC}"
+        if [ "$required" = "required" ]; then
+            exit 1
+        fi
+        return 1
     fi
+}
+
+# Check if dialog is installed (required)
+USE_DIALOG=false
+if check_and_install_package "dialog" "required"; then
+    USE_DIALOG=true
+fi
+
+# Check if jq is installed (required for backup/restore)
+HAS_JQ=false
+if check_and_install_package "jq" "required"; then
+    HAS_JQ=true
 fi
 
 # Check if docker compose is available
@@ -972,15 +1009,20 @@ backup_moad_config() {
             file_size=$(stat -f%z "$file_path" 2>/dev/null || stat -c%s "$file_path" 2>/dev/null)
             
             # Use jq if available, otherwise use sed/awk
-            if command -v jq >/dev/null 2>&1; then
+            if [ "$HAS_JQ" = "true" ] && command -v jq >/dev/null 2>&1; then
                 backup_data=$(echo "$backup_data" | jq --arg key "$json_key" --arg content "$file_content" --arg size "$file_size" --arg path "$file_path" '. + {($key): {"content": $content, "size": $size, "path": $path}}')
             else
-                # Fallback: simple JSON construction (basic, but works)
-                local entry="\"$json_key\":{\"content\":\"$file_content\",\"size\":\"$file_size\",\"path\":\"$file_path\"}"
+                # Fallback: simple JSON construction
+                # Escape special characters in base64 content for JSON
+                local escaped_content
+                escaped_content=$(echo "$file_content" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed 's/\$/\\$/g' | sed 's/`/\\`/g')
+                local entry="\"$json_key\":{\"content\":\"$escaped_content\",\"size\":\"$file_size\",\"path\":\"$file_path\"}"
                 if [ "$backup_data" = "{}" ]; then
                     backup_data="{${entry}}"
                 else
-                    backup_data=$(echo "$backup_data" | sed "s/}$/,${entry}}/")
+                    # Remove trailing } and add comma, then add entry and closing }
+                    backup_data=$(echo "$backup_data" | sed 's/}$//')
+                    backup_data="${backup_data},${entry}}"
                 fi
             fi
         fi
@@ -1006,9 +1048,16 @@ backup_moad_config() {
         fi
     done
     
+    # Validate that backup_data contains files
+    if [ "$backup_data" = "{}" ]; then
+        dialog --stdout --msgbox "Error: No files were added to backup.\n\nPlease check that configuration files exist." 10 60 2>&1 >/dev/null
+        rm -rf "$temp_dir"
+        return
+    fi
+    
     # Create backup JSON structure
     local backup_json
-    if command -v jq >/dev/null 2>&1; then
+    if [ "$HAS_JQ" = "true" ] && command -v jq >/dev/null 2>&1; then
         backup_json=$(cat <<EOF
 {
   "moad_backup": {
@@ -1084,7 +1133,7 @@ restore_moad_config() {
     dialog --stdout --infobox "Validating backup file..." 5 50 2>&1 >/dev/null
     
     # Check if jq is available for better parsing
-    if command -v jq >/dev/null 2>&1; then
+    if [ "$HAS_JQ" = "true" ] && command -v jq >/dev/null 2>&1; then
         # Validate JSON structure
         if ! jq empty "$backup_file" 2>/dev/null; then
             dialog --stdout --msgbox "Error: Invalid JSON backup file." 8 50 2>&1 >/dev/null

@@ -2,6 +2,22 @@
 
 ## Pre-Deployment Verification
 
+### ✅ System Prerequisites
+
+**Required Ubuntu/Debian packages:**
+- [ ] `docker` and `docker-compose` (or `docker compose` plugin)
+- [ ] `dialog` - For MOAD Manager UI
+- [ ] `jq` - For JSON processing in backup/restore
+- [ ] `coreutils` - For base64, numfmt, and other utilities (usually pre-installed)
+
+**Install command:**
+```bash
+sudo apt-get update
+sudo apt-get install -y dialog jq
+```
+
+**Note:** MOAD Manager will prompt to install missing packages if run without them.
+
 ### ✅ File Structure
 - [x] `docker-compose.yml` - Service definitions
 - [x] `vector/vector.yml` - Log processing pipeline

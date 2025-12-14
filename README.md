@@ -115,6 +115,16 @@ See [docs/MYSQL_MONITORING.md](docs/MYSQL_MONITORING.md) for detailed documentat
 - Docker and Docker Compose
 - Access to `/data/moad/logs` (NFS mount)
 - MySQL database accessible for metrics export
+- **Required Ubuntu/Debian packages:**
+  - `dialog` - For MOAD Manager UI (will prompt to install if missing)
+  - `jq` - For JSON processing in backup/restore (will prompt to install if missing)
+  - `coreutils` - For base64, numfmt, and other utilities (usually pre-installed)
+
+**Install required packages:**
+```bash
+sudo apt-get update
+sudo apt-get install -y dialog jq
+```
 
 ### Environment Variables
 
