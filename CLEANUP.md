@@ -2,10 +2,11 @@
 
 ## Quick Reset Script
 
-For complete reset during development, use the provided script:
+For complete reset during development, use the MOAD Manager:
 
 ```bash
-./docker-reset.sh
+./moad-manager.sh
+# Select "11. Docker: Complete Prune & Purge (DESTRUCTIVE)"
 ```
 
 This will:
