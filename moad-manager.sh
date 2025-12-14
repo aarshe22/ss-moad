@@ -1478,7 +1478,8 @@ show_service_urls() {
     local temp_file
     temp_file=$(mktemp /tmp/moad-urls-XXXXXX)
     echo -e "$info" > "$temp_file"
-    dialog --stdout --title "Service URLs" --textbox "$temp_file" 18 70 2>&1 >/dev/null
+    # Use textbox for easy copy/paste (no --stdout, no redirect to /dev/null)
+    dialog --title "Service URLs" --textbox "$temp_file" 20 75 2>&1 >/dev/null
     rm -f "$temp_file"
 }
 
