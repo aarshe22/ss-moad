@@ -54,13 +54,13 @@ ls -la /data/moad/logs/app2/usr/share/apache-tomcat-8.5.94/logs/catalina.out
 ## 5. Start Services
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ## 6. Verify Services
 
 ```bash
-docker-compose ps
+docker compose ps
 # Should show all services as "Up"
 ```
 
@@ -99,10 +99,10 @@ cat vector/structured/*.jsonl 2>/dev/null | jq 'select(.mysql_joins != null) | {
 ### Services Not Starting
 ```bash
 # Check logs
-docker-compose logs
+docker compose logs
 
 # Restart services
-docker-compose restart
+docker compose restart
 ```
 
 ### Vector Not Processing Logs

@@ -145,7 +145,7 @@ sudo nano /etc/hosts
 ### Start Services
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ### Access Dashboards

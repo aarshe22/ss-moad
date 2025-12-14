@@ -6,13 +6,13 @@ Stop and remove MOAD containers, volumes, and networks:
 
 ```bash
 # Stop and remove containers, networks (keeps volumes)
-docker-compose down
+docker compose down
 
 # Stop and remove containers, networks, AND volumes
-docker-compose down -v
+docker compose down -v
 
 # Stop, remove, and also remove orphaned containers
-docker-compose down -v --remove-orphans
+docker compose down -v --remove-orphans
 ```
 
 ## Complete Docker Cleanup
@@ -40,7 +40,7 @@ docker system prune -a --volumes -f
 
 ```bash
 # 1. Stop and remove MOAD stack
-docker-compose down -v
+docker compose down -v
 
 # 2. Remove all stopped containers
 docker container prune -f
@@ -69,20 +69,20 @@ After cleanup, start fresh:
 
 ```bash
 # Clean up MOAD specifically
-docker-compose down -v --remove-orphans
+docker compose down -v --remove-orphans
 
 # Optional: Clean up everything Docker-related
 docker system prune -a --volumes -f
 
 # Start fresh
-docker-compose up -d
+docker compose up -d
 ```
 
 ## What Each Command Does
 
-- `docker-compose down`: Stops and removes containers and networks
-- `docker-compose down -v`: Also removes volumes
-- `docker-compose down -v --remove-orphans`: Also removes containers not in compose file
+- `docker compose down`: Stops and removes containers and networks
+- `docker compose down -v`: Also removes volumes
+- `docker compose down -v --remove-orphans`: Also removes containers not in compose file
 - `docker system prune -a --volumes`: Removes ALL unused Docker resources
 - `docker volume prune`: Removes unused volumes
 - `docker network prune`: Removes unused networks
@@ -95,6 +95,6 @@ docker-compose up -d
 
 For MOAD-only cleanup, use:
 ```bash
-docker-compose down -v --remove-orphans
+docker compose down -v --remove-orphans
 ```
 
