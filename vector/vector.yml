@@ -73,6 +73,9 @@ transforms:
     inputs:
       - tomcat_cm
     source: |
+      # Ensure .message is a string for all operations
+      .message = string!(.message)
+      
       # Parse timestamp
       .timestamp = parse_timestamp!(.message, format: "%Y-%m-%d %H:%M:%S") ?? now()
       
@@ -244,6 +247,9 @@ transforms:
     inputs:
       - tomcat_pfm
     source: |
+      # Ensure .message is a string for all operations
+      .message = string!(.message)
+      
       # Same parsing logic as CM
       .timestamp = parse_timestamp!(.message, format: "%Y-%m-%d %H:%M:%S") ?? now()
       # Extract log level
@@ -337,7 +343,7 @@ transforms:
       }
       
       # Integration task events (FullIntegrationTask, DeltaIntegrationTask)
-      if match(.message, r'(?i)(integrationtask|fullintegration|deltaintegration|sistask)') {
+      if match(string!(.message), r'(?i)(integrationtask|fullintegration|deltaintegration|sistask)') {
         .event_type = "integration_task"
         .event_category = "integration"
         
