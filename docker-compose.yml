@@ -83,13 +83,11 @@ services:
     container_name: moad-mysqld-exporter
     env_file:
       - .env
-    # Entrypoint script reads MYSQL_MOAD_RO_USER, MYSQL_MOAD_RO_PASSWORD, MYSQL_HOST from .env
-    # and constructs DATA_SOURCE_NAME at runtime (avoids docker-compose variable substitution issues)
-    entrypoint: ["/bin/sh", "/entrypoint.sh"]
-    volumes:
-      - ./mysqld-exporter-entrypoint.sh:/entrypoint.sh:ro
+    # Minimal setup for debugging - using sleep to keep container running
+    # Remove entrypoint override to use default, or use a simple debug entrypoint
+    entrypoint: ["/bin/sh", "-c", "echo 'Container started. Environment:' && env | grep MYSQL && echo 'Waiting for manual inspection...' && sleep 3600"]
     # No external ports - only accessible within Docker network
-    restart: unless-stopped
+    restart: "no"  # Changed to "no" to prevent reboot loop during debugging
     networks:
       - moad-network
     healthcheck:

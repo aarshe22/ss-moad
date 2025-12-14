@@ -196,7 +196,7 @@ transforms:
       }
       
       # Integration task events
-      if match(.message, r'(?i)(integrationtask|fullintegration|deltaintegration|sistask)') {
+      if match(string!(.message), r'(?i)(integrationtask|fullintegration|deltaintegration|sistask)') {
         .event_type = "integration_task"
         .event_category = "integration"
         
@@ -217,9 +217,11 @@ transforms:
       if !is_null(.student_id) {
         .student_id = to_int(.student_id) ?? null
       }
-      if !is_null(.student_ids) {
-        .student_ids = map(.student_ids, |id| { to_int(id) ?? null })
-      }
+      # Convert student_ids array elements to integers (Vector 0.38.0 doesn't support map closures)
+      # For now, keep as strings - they'll be converted during join operations if needed
+      # if !is_null(.student_ids) {
+      #   .student_ids = map(.student_ids, |id| { to_int(id) ?? null })
+      # }
       if !is_null(.form_id) {
         .form_id = to_int(.form_id) ?? null
       }
@@ -355,9 +357,11 @@ transforms:
       if !is_null(.student_id) {
         .student_id = to_int(.student_id) ?? null
       }
-      if !is_null(.student_ids) {
-        .student_ids = map(.student_ids, |id| { to_int(id) ?? null })
-      }
+      # Convert student_ids array elements to integers (Vector 0.38.0 doesn't support map closures)
+      # For now, keep as strings - they'll be converted during join operations if needed
+      # if !is_null(.student_ids) {
+      #   .student_ids = map(.student_ids, |id| { to_int(id) ?? null })
+      # }
       if !is_null(.form_id) {
         .form_id = to_int(.form_id) ?? null
       }
