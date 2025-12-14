@@ -123,9 +123,9 @@ transforms:
         if is_null(.auth_result) {
           .auth_result = "unknown"
         }
-        if match(.auth_result, r'(?i)(success|successful)') {
+        if match(string!(.auth_result), r'(?i)(success|successful)') {
           .auth_result = "success"
-        } else if match(.auth_result, r'(?i)(failed|failure|denied|invalid)') {
+        } else if match(string!(.auth_result), r'(?i)(failed|failure|denied|invalid)') {
           .auth_result = "failed"
         }
         
@@ -313,9 +313,9 @@ transforms:
         if is_null(.auth_result) {
           .auth_result = "unknown"
         }
-        if match(.auth_result, r'(?i)(success|successful)') {
+        if match(string!(.auth_result), r'(?i)(success|successful)') {
           .auth_result = "success"
-        } else if match(.auth_result, r'(?i)(failed|failure|denied|invalid)') {
+        } else if match(string!(.auth_result), r'(?i)(failed|failure|denied|invalid)') {
           .auth_result = "failed"
         }
         .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)')
@@ -557,6 +557,9 @@ transforms:
     inputs:
       - mail_cm
     source: |
+      # Ensure .message is a string for all operations
+      .message = string!(.message)
+      
       .timestamp = parse_timestamp(.message, format: "%b %d %H:%M:%S") ?? now()
       
       # Extract email outcome
@@ -599,6 +602,9 @@ transforms:
     inputs:
       - mail_pfm
     source: |
+      # Ensure .message is a string for all operations
+      .message = string!(.message)
+      
       .timestamp = parse_timestamp(.message, format: "%b %d %H:%M:%S") ?? now()
       .event_type = "email"
       .event_category = "communication"
