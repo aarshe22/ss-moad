@@ -635,72 +635,193 @@ create_and_start_containers() {
         fi
     fi
     
-    dialog --stdout --yesno "Create and start all MOAD containers?\n\nThis will:\n- Create containers from images\n- Start all services\n- Build if needed" 12 60 2>&1 >/dev/null
-    if [ $? -eq 0 ]; then
-        local stderr_output
-        stderr_output=$(docker compose up -d --build 2>&1)
-        local result=$?
-        
-        if [ $result -eq 0 ]; then
-            # Get fresh list of created containers and show per-container status
-            sleep 2
-            local created_containers
-            created_containers=$(get_all_containers)
+    dialog --stdout --yesno "Create and start all MOAD containers?\n\nThis will:\n- Pull images (if needed)\n- Build images (if needed)\n- Create containers\n- Start all services" 12 60 2>&1 >/dev/null
+    if [ $? -ne 0 ]; then
+        return
+    fi
+    
+    # Step 1: Pull images with progress
+    local images=("timberio/vector:0.38.0-alpine" "grafana/loki:2.9.0" "prom/prometheus:v2.48.0" "prom/mysqld-exporter:v0.15.1" "grafana/grafana:12.3.0")
+    local image_names=("vector" "loki" "prometheus" "mysqld-exporter" "grafana")
+    local total_images=${#images[@]}
+    local pull_failed=0
+    local pull_errors=()
+    
+    {
+        for i in "${!images[@]}"; do
+            local image_num=$((i + 1))
+            local percent=$((image_num * 100 / total_images))
+            local image_name="${image_names[$i]}"
+            local image="${images[$i]}"
             
-            local containers=()
-            while IFS= read -r line; do
-                [ -n "$line" ] && containers+=("$line")
-            done <<< "$created_containers"
+            echo "XXX"
+            echo "$percent"
+            echo "Pulling $image_name ($image_num/$total_images)..."
+            echo "XXX"
             
-            local total=${#containers[@]}
-            local success_count=0
-            local fail_count=0
-            local failed_containers=()
+            # Pull image and capture both stdout and stderr
+            local pull_output
+            pull_output=$(docker pull "$image" 2>&1)
+            local pull_status=$?
             
-            # Check each container status
-            for i in "${!containers[@]}"; do
-                local container="${containers[$i]}"
-                local container_num=$((i + 1))
-                local percent=$((container_num * 100 / total))
-                local display_name=$(echo "$container" | sed 's/^moad-//')
-                local status
-                status=$(get_container_status_from_docker "$container")
-                
-                {
-                    echo "XXX"
-                    echo "$percent"
-                    echo "Checking $display_name ($container_num/$total)..."
-                    echo "XXX"
-                    sleep 0.3
-                    
-                    if [ "$status" = "running" ]; then
-                        success_count=$((success_count + 1))
-                        echo "XXX"
-                        echo "$percent"
-                        echo "✓ $display_name running"
-                        echo "XXX"
-                    else
-                        fail_count=$((fail_count + 1))
-                        failed_containers+=("$container")
-                        log_error "create_and_start_containers" "Container $container status: $status" "$container"
-                        echo "XXX"
-                        echo "$percent"
-                        echo "✗ $display_name $status"
-                        echo "XXX"
-                    fi
-                } | dialog --colors --gauge "Verifying containers... ($container_num/$total)" 8 60 0
-            done
-            
-            if [ $fail_count -eq 0 ]; then
-                dialog --stdout --msgbox "All containers created and started successfully.\n\nStarted: $success_count container(s)" 10 50 2>&1 >/dev/null
+            if [ $pull_status -eq 0 ]; then
+                echo "XXX"
+                echo "$percent"
+                echo "✓ $image_name: Pulled"
+                echo "XXX"
             else
-                local error_msg="Some containers failed to start.\n\nStarted: $success_count\nFailed: $fail_count\n\nFailed containers:\n$(printf '%s\n' "${failed_containers[@]}")"
-                dialog --stdout --msgbox "$error_msg" 15 60 2>&1 >/dev/null
+                pull_failed=$((pull_failed + 1))
+                pull_errors+=("$image_name: $pull_output")
+                log_command_error "create_and_start_containers" "docker pull $image" "" "$pull_status" "$pull_output"
+                echo "XXX"
+                echo "$percent"
+                echo "✗ $image_name: Pull failed"
+                echo "XXX"
             fi
+        done
+        
+        echo "XXX"
+        echo "100"
+        if [ $pull_failed -eq 0 ]; then
+            echo "All images pulled successfully!"
         else
-            log_command_error "create_and_start_containers" "docker compose up -d --build" "" "$result" "$stderr_output"
-            dialog --stdout --msgbox "Error: Failed to create/start containers.\n\nCheck error log for details." 10 50 2>&1 >/dev/null
+            echo "Some images failed to pull ($pull_failed/$total_images)"
         fi
+        echo "XXX"
+        sleep 1
+    } | dialog --colors --gauge "Pulling images... (Step 1/4)" 10 70 0
+    
+    if [ $pull_failed -gt 0 ]; then
+        local error_msg="Image pull completed with errors:\n\n$(printf '%s\n' "${pull_errors[@]}" | head -5)\n\nContinue anyway?"
+        dialog --stdout --yesno "$error_msg" 15 70 2>&1 >/dev/null
+        if [ $? -ne 0 ]; then
+            return
+        fi
+    fi
+    
+    # Step 2: Build images if needed (docker compose build)
+    local services=("vector" "loki" "prometheus" "mysqld-exporter" "grafana")
+    local total_services=${#services[@]}
+    local build_failed=0
+    local build_errors=()
+    
+    {
+        for i in "${!services[@]}"; do
+            local service_num=$((i + 1))
+            local percent=$((service_num * 100 / total_services))
+            local service="${services[$i]}"
+            
+            echo "XXX"
+            echo "$percent"
+            echo "Building $service ($service_num/$total_services)..."
+            echo "XXX"
+            
+            # Build service and capture output
+            local build_output
+            build_output=$(docker compose build "$service" 2>&1)
+            local build_status=$?
+            
+            if [ $build_status -eq 0 ]; then
+                echo "XXX"
+                echo "$percent"
+                echo "✓ $service: Built"
+                echo "XXX"
+            else
+                build_failed=$((build_failed + 1))
+                build_errors+=("$service: $build_output")
+                log_command_error "create_and_start_containers" "docker compose build $service" "$service" "$build_status" "$build_output"
+                echo "XXX"
+                echo "$percent"
+                echo "✗ $service: Build failed"
+                echo "XXX"
+            fi
+        done
+        
+        echo "XXX"
+        echo "100"
+        if [ $build_failed -eq 0 ]; then
+            echo "All services built successfully!"
+        else
+            echo "Some services failed to build ($build_failed/$total_services)"
+        fi
+        echo "XXX"
+        sleep 1
+    } | dialog --colors --gauge "Building images... (Step 2/4)" 10 70 0
+    
+    # Step 3: Create and start containers
+    local stderr_output
+    stderr_output=$(docker compose up -d 2>&1)
+    local result=$?
+    
+    if [ $result -ne 0 ]; then
+        log_command_error "create_and_start_containers" "docker compose up -d" "" "$result" "$stderr_output"
+        dialog --stdout --msgbox "Error: Failed to create/start containers.\n\nError: $stderr_output\n\nCheck error log for details." 15 70 2>&1 >/dev/null
+        return
+    fi
+    
+    # Step 4: Verify container status
+    sleep 2
+    local created_containers
+    created_containers=$(get_all_containers)
+    
+    local containers=()
+    while IFS= read -r line; do
+        [ -n "$line" ] && containers+=("$line")
+    done <<< "$created_containers"
+    
+    local total=${#containers[@]}
+    local success_count=0
+    local fail_count=0
+    local failed_containers=()
+    
+    {
+        for i in "${!containers[@]}"; do
+            local container="${containers[$i]}"
+            local container_num=$((i + 1))
+            local percent=$((container_num * 100 / total))
+            local display_name=$(echo "$container" | sed 's/^moad-//')
+            local status
+            status=$(get_container_status_from_docker "$container")
+            
+            echo "XXX"
+            echo "$percent"
+            echo "Checking $display_name ($container_num/$total)..."
+            echo "XXX"
+            sleep 0.3
+            
+            if [ "$status" = "running" ]; then
+                success_count=$((success_count + 1))
+                echo "XXX"
+                echo "$percent"
+                echo "✓ $display_name: running"
+                echo "XXX"
+            else
+                fail_count=$((fail_count + 1))
+                failed_containers+=("$container")
+                log_error "create_and_start_containers" "Container $container status: $status" "$container"
+                echo "XXX"
+                echo "$percent"
+                echo "✗ $display_name: $status"
+                echo "XXX"
+            fi
+        done
+        
+        echo "XXX"
+        echo "100"
+        if [ $fail_count -eq 0 ]; then
+            echo "All containers running!"
+        else
+            echo "Some containers not running ($fail_count/$total)"
+        fi
+        echo "XXX"
+        sleep 1
+    } | dialog --colors --gauge "Verifying containers... (Step 4/4)" 8 60 0
+    
+    if [ $fail_count -eq 0 ]; then
+        dialog --stdout --msgbox "All containers created and started successfully!\n\nStarted: $success_count container(s)" 10 50 2>&1 >/dev/null
+    else
+        local error_msg="Some containers failed to start.\n\nStarted: $success_count\nFailed: $fail_count\n\nFailed containers:\n$(printf '%s\n' "${failed_containers[@]}")"
+        dialog --stdout --msgbox "$error_msg\n\nCheck error log and container logs for details." 15 60 2>&1 >/dev/null
     fi
 }
 
@@ -961,71 +1082,149 @@ pull_latest_images() {
     local images=("timberio/vector:0.38.0-alpine" "grafana/loki:2.9.0" "prom/prometheus:v2.48.0" "prom/mysqld-exporter:v0.15.1" "grafana/grafana:12.3.0")
     local image_names=("vector" "loki" "prometheus" "mysqld-exporter" "grafana")
     local total=${#images[@]}
-    local current=0
+    local pull_failed=0
+    local pull_errors=()
     
     # Create progress display
     {
         for i in "${!images[@]}"; do
-            current=$((i + 1))
-            local percent=$((current * 100 / total))
+            local image_num=$((i + 1))
+            local percent=$((image_num * 100 / total))
             local image_name="${image_names[$i]}"
+            local image="${images[$i]}"
             
             echo "XXX"
             echo "$percent"
-            echo "Pulling image $current/$total: $image_name..."
+            echo "Pulling $image_name ($image_num/$total)..."
             echo "XXX"
             
-            # Pull the image and capture output
-            docker pull "${images[$i]}" >/dev/null 2>&1
+            # Pull the image and capture both stdout and stderr
+            local pull_output
+            pull_output=$(docker pull "$image" 2>&1)
             local pull_status=$?
             
             if [ $pull_status -eq 0 ]; then
                 echo "XXX"
                 echo "$percent"
-                echo "✓ $image_name: Pulled successfully"
+                echo "✓ $image_name: Pulled"
                 echo "XXX"
             else
+                pull_failed=$((pull_failed + 1))
+                pull_errors+=("$image_name: $pull_output")
+                log_command_error "pull_latest_images" "docker pull $image" "" "$pull_status" "$pull_output"
                 echo "XXX"
                 echo "$percent"
                 echo "✗ $image_name: Pull failed"
                 echo "XXX"
             fi
-            
-            sleep 0.5
         done
         
         echo "XXX"
         echo "100"
-        echo "All images pulled successfully!"
+        if [ $pull_failed -eq 0 ]; then
+            echo "All images pulled successfully!"
+        else
+            echo "Some images failed to pull ($pull_failed/$total)"
+        fi
         echo "XXX"
         sleep 1
     } | dialog --colors --gauge "Pulling latest images..." 10 70 0
     
-    dialog --stdout --msgbox "Image pull completed." 8 50 2>&1 >/dev/null
+    if [ $pull_failed -eq 0 ]; then
+        dialog --stdout --msgbox "Image pull completed successfully.\n\nPulled: $total image(s)" 10 50 2>&1 >/dev/null
+    else
+        local error_msg="Image pull completed with errors.\n\nPulled: $((total - pull_failed))/$total\nFailed: $pull_failed\n\nErrors:\n$(printf '%s\n' "${pull_errors[@]}" | head -3)"
+        dialog --stdout --msgbox "$error_msg\n\nCheck error log for details." 15 70 2>&1 >/dev/null
+    fi
 }
 
 complete_prune_purge() {
     dialog --stdout --yesno "WARNING: This will:\n\n- Stop all MOAD containers\n- Remove all containers\n- Remove all volumes\n- Remove all networks\n- Prune all unused Docker resources\n\nThis is DESTRUCTIVE and cannot be undone!\n\nContinue?" 15 70 2>&1 >/dev/null
     
-    if [ $? -eq 0 ]; then
-        dialog --stdout --infobox "Performing complete Docker cleanup..." 5 50 2>&1 >/dev/null
+    if [ $? -ne 0 ]; then
+        return
+    fi
+    
+    local errors=()
+    
+    {
+        echo "XXX"
+        echo "10"
+        echo "Stopping and removing containers..."
+        echo "XXX"
         
-        # Stop MOAD containers
-        docker compose down >/dev/null 2>&1 || true
+        local stderr_output
+        stderr_output=$(docker compose down 2>&1)
+        local result=$?
+        if [ $result -ne 0 ]; then
+            errors+=("docker compose down: $stderr_output")
+            log_command_error "complete_prune_purge" "docker compose down" "" "$result" "$stderr_output"
+        fi
         
-        # Remove all containers
-        docker container prune -f >/dev/null 2>&1 || true
+        echo "XXX"
+        echo "30"
+        echo "Removing containers..."
+        echo "XXX"
         
-        # Remove all volumes
-        docker volume prune -f >/dev/null 2>&1 || true
+        stderr_output=$(docker container prune -f 2>&1)
+        result=$?
+        if [ $result -ne 0 ]; then
+            errors+=("docker container prune: $stderr_output")
+            log_command_error "complete_prune_purge" "docker container prune -f" "" "$result" "$stderr_output"
+        fi
         
-        # Remove all networks (except defaults)
-        docker network prune -f >/dev/null 2>&1 || true
+        echo "XXX"
+        echo "50"
+        echo "Removing volumes..."
+        echo "XXX"
         
-        # Complete system prune
-        docker system prune -af --volumes >/dev/null 2>&1 || true
+        stderr_output=$(docker volume prune -f 2>&1)
+        result=$?
+        if [ $result -ne 0 ]; then
+            errors+=("docker volume prune: $stderr_output")
+            log_command_error "complete_prune_purge" "docker volume prune -f" "" "$result" "$stderr_output"
+        fi
         
+        echo "XXX"
+        echo "70"
+        echo "Removing networks..."
+        echo "XXX"
+        
+        stderr_output=$(docker network prune -f 2>&1)
+        result=$?
+        if [ $result -ne 0 ]; then
+            errors+=("docker network prune: $stderr_output")
+            log_command_error "complete_prune_purge" "docker network prune -f" "" "$result" "$stderr_output"
+        fi
+        
+        echo "XXX"
+        echo "90"
+        echo "Pruning system resources..."
+        echo "XXX"
+        
+        stderr_output=$(docker system prune -af --volumes 2>&1)
+        result=$?
+        if [ $result -ne 0 ]; then
+            errors+=("docker system prune: $stderr_output")
+            log_command_error "complete_prune_purge" "docker system prune -af --volumes" "" "$result" "$stderr_output"
+        fi
+        
+        echo "XXX"
+        echo "100"
+        if [ ${#errors[@]} -eq 0 ]; then
+            echo "✓ Prune and purge completed"
+        else
+            echo "⚠ Completed with ${#errors[@]} error(s)"
+        fi
+        echo "XXX"
+        sleep 1
+    } | dialog --colors --gauge "Pruning and purging Docker resources..." 8 60 0
+    
+    if [ ${#errors[@]} -eq 0 ]; then
         dialog --stdout --msgbox "Complete Docker cleanup finished.\n\nAll containers, volumes, and networks have been removed." 10 60 2>&1 >/dev/null
+    else
+        local error_msg="Prune and purge completed with errors:\n\n$(printf '%s\n' "${errors[@]}" | head -3)\n\nCheck error log for details."
+        dialog --stdout --msgbox "$error_msg" 15 70 2>&1 >/dev/null
     fi
 }
 
