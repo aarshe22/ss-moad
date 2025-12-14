@@ -1,0 +1,85 @@
+{
+  "dashboard": {
+    "title": "Authentication Failures by School",
+    "tags": ["MOAD", "Security", "Authentication"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Auth Failures by School (Join-Compatible)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(rate({event_type=\"authentication\", auth_result=\"failed\"} | json | mysql_join_school_id != \"\")[5m]) by (school_id)",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "School ID: {{school_id}}"
+          }
+        ],
+        "description": "Shows authentication failures grouped by school_id. The mysql_join_school_id field enables joins with schools.id in MySQL."
+      },
+      {
+        "id": 2,
+        "title": "Auth Failures vs MySQL Threads",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(rate({event_type=\"authentication\", auth_result=\"failed\"} | json)[5m])",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "Auth Failures"
+          },
+          {
+            "expr": "mysql_threads_connected",
+            "refId": "B",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "MySQL Threads"
+          }
+        ],
+        "description": "Correlates authentication failures with database connection pressure."
+      },
+      {
+        "id": 3,
+        "title": "Failed Auth Events with Join Hints",
+        "type": "logs",
+        "gridPos": {"h": 10, "w": 24, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "{event_type=\"authentication\", auth_result=\"failed\"} | json | mysql_joins != \"\"",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"}
+          }
+        ],
+        "options": {
+          "dedupStrategy": "none",
+          "enableLogDetails": true,
+          "prettifyLogMessage": false,
+          "showCommonLabels": false,
+          "showLabels": false,
+          "showTime": true,
+          "sortOrder": "Descending",
+          "wrapLogMessage": false
+        },
+        "description": "Shows authentication failure events with MySQL join hints. Fields like mysql_join_user_id, mysql_join_school_id enable joins with MySQL tables."
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "name": "MySQL Alerts",
+          "datasource": {"type": "prometheus", "uid": "Prometheus"},
+          "enable": true,
+          "expr": "mysql_threads_connected > 100",
+          "iconColor": "red",
+          "title": "High MySQL Connections"
+        }
+      ]
+    }
+  }
+}
+

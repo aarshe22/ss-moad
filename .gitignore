@@ -1,0 +1,22 @@
+# Environment variables
+.env
+
+# Docker volumes data
+loki-data/
+prometheus-data/
+grafana-data/
+
+# Structured logs (may contain sensitive data)
+vector/structured/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+

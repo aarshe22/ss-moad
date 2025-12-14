@@ -1,0 +1,570 @@
+# MOAD Vector Configuration
+# Ensures all log-derived identifiers are join-compatible with MySQL schema
+
+# ============================================================================
+# SOURCES - Read-only log ingestion from NFS mounts
+# ============================================================================
+
+sources:
+  # Tomcat logs - CM application
+  tomcat_cm:
+    type: file
+    include:
+      - /data/moad/logs/app1/usr/share/apache-tomcat-8.5.94/logs/catalina.out
+    multiline:
+      start_pattern: '^\d{4}-\d{2}-\d{2}'
+      mode: continue_through
+      condition_pattern: '^(?!\d{4}-\d{2}-\d{2})'
+    encoding:
+      except: [utf8, utf16, utf16le, utf16be]
+    host_key: host
+    app_key: app
+    app: CM
+
+  # Tomcat logs - PFM application
+  tomcat_pfm:
+    type: file
+    include:
+      - /data/moad/logs/app2/usr/share/apache-tomcat-8.5.94/logs/catalina.out
+    multiline:
+      start_pattern: '^\d{4}-\d{2}-\d{2}'
+      mode: continue_through
+      condition_pattern: '^(?!\d{4}-\d{2}-\d{2})'
+    encoding:
+      except: [utf8, utf16, utf16le, utf16be]
+    host_key: host
+    app_key: app
+    app: PFM
+
+  # HAProxy logs - CM
+  haproxy_cm:
+    type: file
+    include:
+      - /data/moad/logs/app1/var/log/haproxy.log
+    host_key: host
+    app_key: app
+    app: CM
+
+  # HAProxy logs - PFM
+  haproxy_pfm:
+    type: file
+    include:
+      - /data/moad/logs/app2/var/log/haproxy.log
+    host_key: host
+    app_key: app
+    app: PFM
+
+  # Postfix mail logs - CM
+  mail_cm:
+    type: file
+    include:
+      - /data/moad/logs/app1/var/log/mail.log
+    host_key: host
+    app_key: app
+    app: CM
+
+  # Postfix mail logs - PFM
+  mail_pfm:
+    type: file
+    include:
+      - /data/moad/logs/app2/var/log/mail.log
+    host_key: host
+    app_key: app
+    app: PFM
+
+# ============================================================================
+# TRANSFORMS - Event classification and identifier extraction
+# ============================================================================
+
+transforms:
+  # Parse Tomcat logs and extract authentication events
+  parse_tomcat_cm:
+    type: remap
+    inputs:
+      - tomcat_cm
+    source: |
+      # Parse timestamp
+      .timestamp = parse_timestamp!(.message, format: "%Y-%m-%d %H:%M:%S") ?? now()
+      
+      # Extract log level
+      .level = match(.message) {
+        r'ERROR' => "error",
+        r'WARN' => "warn",
+        r'INFO' => "info",
+        r'DEBUG' => "debug",
+        _ => "unknown"
+      }
+      
+      # Event type classification
+      .event_type = "unknown"
+      .event_category = "application"
+      
+      # Authentication events - extract join-compatible identifiers
+      if match(.message, r'(?i)(login|authentication|auth|authenticate)') {
+        .event_type = "authentication"
+        .event_category = "security"
+        
+        # Extract username (normalized to match users.userName)
+        .username = match(.message, r'(?:user|username|login)[\s:=]+([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|[a-zA-Z0-9._-]+)') ?? null
+        if .username {
+          .username = downcase(.username)
+          # Remove email domain if it's an email-style username
+          .username_normalized = replace(.username, r'@.*$', "")
+        }
+        
+        # Extract email (normalized to match users.email)
+        .email = match(.message, r'([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})') ?? null
+        if .email {
+          .email = downcase(.email)
+        }
+        
+        # Extract IP address (for users.lastKnownIP correlation)
+        .client_ip = match(.message, r'\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b') ?? null
+        
+        # Auth result (success/failed)
+        .auth_result = match(.message, r'(?i)(success|successful|failed|failure|denied|invalid)') ?? "unknown"
+        if match(.auth_result, r'(?i)(success|successful)') {
+          .auth_result = "success"
+        } else if match(.auth_result, r'(?i)(failed|failure|denied|invalid)') {
+          .auth_result = "failed"
+        }
+        
+        # Extract school identifier from URL or context
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
+        .school_subdomain = match(.message, r'https?://([a-z0-9-]+)\.schoolsoft\.(?:net|com)') ?? null
+      }
+      
+      # PowerSchool integration events (ConsumerManager)
+      if match(.message, r'(?i)(powerschool|consumer|sis|integration)') {
+        .event_type = "powerschool_integration"
+        .event_category = "integration"
+        
+        # Extract external SIS identity
+        .sis_identity = match(.message, r'(?:sis|external|powerschool)[\s:=]+([a-zA-Z0-9._-]+)') ?? null
+        
+        # Extract email (for parents.email join)
+        .email = match(.message, r'([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})') ?? null
+        if .email {
+          .email = downcase(.email)
+        }
+        
+        # Extract student IDs (for students.id join)
+        .student_ids = match(.message, r'(?:student|studentId)[\s:=]+(\d+)') ?? []
+        if is_string(.student_ids) {
+          .student_ids = [.student_ids]
+        }
+        
+        # Extract school ID (for studentSchool.schoolId join)
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
+        
+        # Integration status
+        .integration_status = match(.message, r'(?i)(success|failed|error|completed)') ?? "unknown"
+      }
+      
+      # Conference events
+      if match(.message, r'(?i)(conference|round|schedule|timeslot)') {
+        .event_type = "conference"
+        .event_category = "business"
+        
+        # Extract user ID (for users.id join)
+        .user_id = match(.message, r'(?:user|userId)[\s:=]+(\d+)') ?? null
+        
+        # Extract school ID (for schools.id join)
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
+        
+        # Extract student ID (for students.id join)
+        .student_id = match(.message, r'(?:student|studentId)[\s:=]+(\d+)') ?? null
+      }
+      
+      # Policy events
+      if match(.message, r'(?i)(policy|policyresponse)') {
+        .event_type = "policy"
+        .event_category = "business"
+        
+        .user_id = match(.message, r'(?:user|userId)[\s:=]+(\d+)') ?? null
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
+        .student_id = match(.message, r'(?:student|studentId)[\s:=]+(\d+)') ?? null
+      }
+      
+      # Ensure all IDs are integers (for MySQL join compatibility)
+      if .user_id {
+        .user_id = to_int(.user_id) ?? null
+      }
+      if .school_id {
+        .school_id = to_int(.school_id) ?? null
+      }
+      if .student_id {
+        .student_id = to_int(.student_id) ?? null
+      }
+      if .student_ids {
+        .student_ids = map(.student_ids, |id| { to_int(id) ?? null })
+      }
+      
+      # Add metadata
+      .source_component = "tomcat"
+      .host = get_env_var("HOSTNAME") ?? "app1"
+
+  parse_tomcat_pfm:
+    type: remap
+    inputs:
+      - tomcat_pfm
+    source: |
+      # Same parsing logic as CM
+      .timestamp = parse_timestamp!(.message, format: "%Y-%m-%d %H:%M:%S") ?? now()
+      .level = match(.message) {
+        r'ERROR' => "error",
+        r'WARN' => "warn",
+        r'INFO' => "info",
+        r'DEBUG' => "debug",
+        _ => "unknown"
+      }
+      .event_type = "unknown"
+      .event_category = "application"
+      
+      if match(.message, r'(?i)(login|authentication|auth|authenticate)') {
+        .event_type = "authentication"
+        .event_category = "security"
+        .username = match(.message, r'(?:user|username|login)[\s:=]+([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|[a-zA-Z0-9._-]+)') ?? null
+        if .username {
+          .username = downcase(.username)
+          .username_normalized = replace(.username, r'@.*$', "")
+        }
+        .email = match(.message, r'([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})') ?? null
+        if .email {
+          .email = downcase(.email)
+        }
+        .client_ip = match(.message, r'\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b') ?? null
+        .auth_result = match(.message, r'(?i)(success|successful|failed|failure|denied|invalid)') ?? "unknown"
+        if match(.auth_result, r'(?i)(success|successful)') {
+          .auth_result = "success"
+        } else if match(.auth_result, r'(?i)(failed|failure|denied|invalid)') {
+          .auth_result = "failed"
+        }
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
+        .school_subdomain = match(.message, r'https?://([a-z0-9-]+)\.schoolsoft\.(?:net|com)') ?? null
+      }
+      
+      if match(.message, r'(?i)(powerschool|consumer|sis|integration)') {
+        .event_type = "powerschool_integration"
+        .event_category = "integration"
+        .sis_identity = match(.message, r'(?:sis|external|powerschool)[\s:=]+([a-zA-Z0-9._-]+)') ?? null
+        .email = match(.message, r'([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})') ?? null
+        if .email {
+          .email = downcase(.email)
+        }
+        .student_ids = match(.message, r'(?:student|studentId)[\s:=]+(\d+)') ?? []
+        if is_string(.student_ids) {
+          .student_ids = [.student_ids]
+        }
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
+        .integration_status = match(.message, r'(?i)(success|failed|error|completed)') ?? "unknown"
+      }
+      
+      if match(.message, r'(?i)(conference|round|schedule|timeslot)') {
+        .event_type = "conference"
+        .event_category = "business"
+        .user_id = match(.message, r'(?:user|userId)[\s:=]+(\d+)') ?? null
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
+        .student_id = match(.message, r'(?:student|studentId)[\s:=]+(\d+)') ?? null
+      }
+      
+      if match(.message, r'(?i)(policy|policyresponse)') {
+        .event_type = "policy"
+        .event_category = "business"
+        .user_id = match(.message, r'(?:user|userId)[\s:=]+(\d+)') ?? null
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
+        .student_id = match(.message, r'(?:student|studentId)[\s:=]+(\d+)') ?? null
+      }
+      
+      if .user_id {
+        .user_id = to_int(.user_id) ?? null
+      }
+      if .school_id {
+        .school_id = to_int(.school_id) ?? null
+      }
+      if .student_id {
+        .student_id = to_int(.student_id) ?? null
+      }
+      if .student_ids {
+        .student_ids = map(.student_ids, |id| { to_int(id) ?? null })
+      }
+      
+      .source_component = "tomcat"
+      .host = get_env_var("HOSTNAME") ?? "app2"
+
+  # Parse HAProxy logs for HTTP traffic and authentication
+  parse_haproxy_cm:
+    type: remap
+    inputs:
+      - haproxy_cm
+    source: |
+      # HAProxy log format: client_ip:port [timestamp] frontend backend/server status_code bytes ...
+      # Extract fields from HAProxy log format
+      parsed = parse_apache_log(.message, format: "combined") ?? {}
+      
+      .timestamp = parsed.timestamp ?? now()
+      .client_ip = parsed.remote_addr ?? null
+      .http_method = parsed.request_method ?? null
+      .http_path = parsed.request ?? null
+      .http_status = parsed.status ?? null
+      .user_agent = parsed.agent ?? null
+      
+      # Extract school from URL path (for schools.id join)
+      .school_subdomain = match(.http_path, r'/([a-z0-9-]+)/') ?? null
+      .school_id = match(.http_path, r'(?:school|schoolId)[\s:=/]+(\d+)') ?? null
+      if .school_id {
+        .school_id = to_int(.school_id) ?? null
+      }
+      
+      # Device classification
+      .device = "unknown"
+      if match(.user_agent, r'(?i)(mobile|android|iphone|ipad)') {
+        .device = "mobile"
+      } else if match(.user_agent, r'(?i)(desktop|windows|mac|linux)') {
+        .device = "desktop"
+      }
+      
+      # Authentication events from HTTP paths
+      if match(.http_path, r'(?i)(login|auth|authenticate)') {
+        .event_type = "authentication"
+        .event_category = "security"
+        
+        # Extract username from path or query params
+        .username = match(.http_path, r'(?:user|username|login)[=/]([a-zA-Z0-9._-]+)') ?? null
+        if .username {
+          .username = downcase(.username)
+          .username_normalized = replace(.username, r'@.*$', "")
+        }
+        
+        # Auth result from HTTP status
+        if .http_status == "200" {
+          .auth_result = "success"
+        } else if .http_status in ["401", "403"] {
+          .auth_result = "failed"
+        }
+      } else {
+        .event_type = "http_traffic"
+        .event_category = "infrastructure"
+      }
+      
+      .source_component = "haproxy"
+      .host = get_env_var("HOSTNAME") ?? "app1"
+      .app = "CM"
+
+  parse_haproxy_pfm:
+    type: remap
+    inputs:
+      - haproxy_pfm
+    source: |
+      parsed = parse_apache_log(.message, format: "combined") ?? {}
+      .timestamp = parsed.timestamp ?? now()
+      .client_ip = parsed.remote_addr ?? null
+      .http_method = parsed.request_method ?? null
+      .http_path = parsed.request ?? null
+      .http_status = parsed.status ?? null
+      .user_agent = parsed.agent ?? null
+      .school_subdomain = match(.http_path, r'/([a-z0-9-]+)/') ?? null
+      .school_id = match(.http_path, r'(?:school|schoolId)[\s:=/]+(\d+)') ?? null
+      if .school_id {
+        .school_id = to_int(.school_id) ?? null
+      }
+      .device = "unknown"
+      if match(.user_agent, r'(?i)(mobile|android|iphone|ipad)') {
+        .device = "mobile"
+      } else if match(.user_agent, r'(?i)(desktop|windows|mac|linux)') {
+        .device = "desktop"
+      }
+      if match(.http_path, r'(?i)(login|auth|authenticate)') {
+        .event_type = "authentication"
+        .event_category = "security"
+        .username = match(.http_path, r'(?:user|username|login)[=/]([a-zA-Z0-9._-]+)') ?? null
+        if .username {
+          .username = downcase(.username)
+          .username_normalized = replace(.username, r'@.*$', "")
+        }
+        if .http_status == "200" {
+          .auth_result = "success"
+        } else if .http_status in ["401", "403"] {
+          .auth_result = "failed"
+        }
+      } else {
+        .event_type = "http_traffic"
+        .event_category = "infrastructure"
+      }
+      .source_component = "haproxy"
+      .host = get_env_var("HOSTNAME") ?? "app2"
+      .app = "PFM"
+
+  # Parse Postfix mail logs
+  parse_mail_cm:
+    type: remap
+    inputs:
+      - mail_cm
+    source: |
+      .timestamp = parse_timestamp!(.message, format: "%b %d %H:%M:%S") ?? now()
+      
+      # Extract email outcome
+      .event_type = "email"
+      .event_category = "communication"
+      
+      # Extract recipient email (normalized for users.email and parents.email join)
+      .recipient_email = match(.message, r'to=<([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>') ?? null
+      if .recipient_email {
+        .recipient_email = downcase(.recipient_email)
+      }
+      
+      # Extract sender
+      .sender_email = match(.message, r'from=<([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>') ?? null
+      if .sender_email {
+        .sender_email = downcase(.sender_email)
+      }
+      
+      # Email outcome (sent, bounced, deferred, rejected)
+      .email_outcome = "unknown"
+      if match(.message, r'(?i)(sent|delivered)') {
+        .email_outcome = "sent"
+      } else if match(.message, r'(?i)(bounce|bounced)') {
+        .email_outcome = "bounced"
+      } else if match(.message, r'(?i)(defer|deferred)') {
+        .email_outcome = "deferred"
+      } else if match(.message, r'(?i)(reject|rejected)') {
+        .email_outcome = "rejected"
+      }
+      
+      # Extract message ID for correlation
+      .message_id = match(.message, r'message-id=<([^>]+)>') ?? null
+      
+      .source_component = "postfix"
+      .host = get_env_var("HOSTNAME") ?? "app1"
+      .app = "CM"
+
+  parse_mail_pfm:
+    type: remap
+    inputs:
+      - mail_pfm
+    source: |
+      .timestamp = parse_timestamp!(.message, format: "%b %d %H:%M:%S") ?? now()
+      .event_type = "email"
+      .event_category = "communication"
+      .recipient_email = match(.message, r'to=<([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>') ?? null
+      if .recipient_email {
+        .recipient_email = downcase(.recipient_email)
+      }
+      .sender_email = match(.message, r'from=<([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>') ?? null
+      if .sender_email {
+        .sender_email = downcase(.sender_email)
+      }
+      .email_outcome = "unknown"
+      if match(.message, r'(?i)(sent|delivered)') {
+        .email_outcome = "sent"
+      } else if match(.message, r'(?i)(bounce|bounced)') {
+        .email_outcome = "bounced"
+      } else if match(.message, r'(?i)(defer|deferred)') {
+        .email_outcome = "deferred"
+      } else if match(.message, r'(?i)(reject|rejected)') {
+        .email_outcome = "rejected"
+      }
+      .message_id = match(.message, r'message-id=<([^>]+)>') ?? null
+      .source_component = "postfix"
+      .host = get_env_var("HOSTNAME") ?? "app2"
+      .app = "PFM"
+
+  # Normalize all events for MySQL join compatibility
+  normalize_identifiers:
+    type: remap
+    inputs:
+      - parse_tomcat_cm
+      - parse_tomcat_pfm
+      - parse_haproxy_cm
+      - parse_haproxy_pfm
+      - parse_mail_cm
+      - parse_mail_pfm
+    source: |
+      # Ensure consistent field naming for MySQL joins
+      # Map to MySQL column names where applicable
+      
+      # User identifiers (for users table joins)
+      if .username {
+        .mysql_join_user_name = .username_normalized ?? .username
+      }
+      if .email {
+        .mysql_join_user_email = .email
+      }
+      if .recipient_email {
+        .mysql_join_user_email = .recipient_email
+      }
+      
+      # ID fields (ensure integer type for MySQL joins)
+      if .user_id {
+        .mysql_join_user_id = to_int(.user_id) ?? null
+      }
+      if .school_id {
+        .mysql_join_school_id = to_int(.school_id) ?? null
+      }
+      if .student_id {
+        .mysql_join_student_id = to_int(.student_id) ?? null
+      }
+      
+      # Add join hints for Grafana queries
+      .mysql_joins = []
+      if .mysql_join_user_id {
+        .mysql_joins = append(.mysql_joins, "users.id")
+      }
+      if .mysql_join_user_name {
+        .mysql_joins = append(.mysql_joins, "users.userName")
+      }
+      if .mysql_join_user_email {
+        .mysql_joins = append(.mysql_joins, "users.email")
+      }
+      if .mysql_join_school_id {
+        .mysql_joins = append(.mysql_joins, "schools.id")
+      }
+      if .mysql_join_student_id {
+        .mysql_joins = append(.mysql_joins, "students.id")
+      }
+      
+      # Standardize timestamp format
+      .@timestamp = .timestamp
+      
+      # Add MOAD metadata
+      .moad_version = "1.0"
+      .moad_join_compatible = true
+
+# ============================================================================
+# SINKS - Output to Loki and structured files
+# ============================================================================
+
+sinks:
+  # Send to Loki for log aggregation
+  loki_all:
+    type: loki
+    inputs:
+      - normalize_identifiers
+    endpoint: http://loki:3100
+    encoding:
+      codec: json
+    labels:
+      app: "{{ app }}"
+      host: "{{ host }}"
+      event_type: "{{ event_type }}"
+      event_category: "{{ event_category }}"
+      source_component: "{{ source_component }}"
+    healthcheck:
+      enabled: true
+
+  # Write structured JSON logs for archival and analysis
+  structured_files:
+    type: file
+    inputs:
+      - normalize_identifiers
+    path: /data/moad/logs/structured
+    filename_append_uuid: true
+    filename_extension: jsonl
+    encoding:
+      codec: json
+    compression: gzip
+    buffer:
+      type: disk
+      max_size: 104857600  # 100MB
+      when_full: block
+

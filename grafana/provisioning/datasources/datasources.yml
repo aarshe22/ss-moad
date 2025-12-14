@@ -1,0 +1,46 @@
+apiVersion: 1
+
+datasources:
+  # Loki - Primary log aggregation
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    isDefault: true
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        # Enable derived fields for MySQL join hints
+        - datasourceUid: prometheus
+          matcherRegex: "mysql_join_(\\w+)"
+          name: "MySQL Join Field"
+          url: ""
+
+  # Prometheus - Metrics collection
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: false
+    jsonData:
+      timeInterval: 30s
+      httpMethod: POST
+
+  # MySQL - Direct database access (read-only, metrics only per non-goals)
+  # Note: Per non-goals, we don't use direct MySQL queries from Grafana
+  # This datasource is included for reference but should be used sparingly
+  - name: MySQL
+    type: mysql
+    access: proxy
+    url: mysql-host:3306
+    database: schoolsoft
+    user: grafana_readonly
+    secureJsonData:
+      password: ${MYSQL_GRAFANA_PASSWORD}
+    jsonData:
+      maxOpenConns: 100
+      maxIdleConns: 100
+      connMaxLifetime: 14400
+      # Note: Use this only for metadata lookups, not for time-series queries
+      # Per non-goals: "No inline DB queries from Grafana (metrics only)"
+

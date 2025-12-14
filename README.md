@@ -1,1 +1,148 @@
-# ss-moad
+# MOAD - Mother Of All Dashboards
+
+A unified observability and analytics platform for SchoolSoft operations, providing a single source of truth across logs, metrics, and relational data.
+
+## Core Mission
+
+- Provide a single source of truth for SchoolSoft operations
+- Unify logs, metrics, and relational data into one analytical plane
+- Enable security, operational, and business insight
+- Support per-district, per-school, per-user, and per-student visibility
+- Enable root-cause analysis across application, infrastructure, and data layers
+
+## Architecture
+
+### Components
+
+- **Vector**: Log ingestion, multiline reconstruction, field extraction, event classification, JSON normalization
+- **Loki**: Log aggregation and storage
+- **Prometheus**: Metrics collection
+- **MySQL Exporter**: Database metrics (critical for correlation)
+- **Grafana**: Visualization and dashboards
+
+### Deployment
+
+- **Host**: `dev1.schoolsoft.net`
+- **Runtime**: Docker Compose
+- **Filesystem Root**: `/data/moad`
+
+### Network Endpoints
+
+- Grafana: `http://dev1.schoolsoft.net:3000`
+- Loki: `http://dev1.schoolsoft.net:3100`
+- Prometheus: `http://dev1.schoolsoft.net:9090`
+
+## Key Design: Join Compatibility
+
+**All log-derived identifiers are join-compatible with the MySQL schema.**
+
+This means:
+- Integer IDs are extracted as integers (not strings)
+- String identifiers are normalized (lowercase, trimmed)
+- Email addresses match MySQL column formats
+- Usernames are normalized to match `users.userName`
+- Each event includes join hints (`mysql_joins` array)
+
+See [docs/JOIN_COMPATIBILITY.md](docs/JOIN_COMPATIBILITY.md) for detailed design.
+
+## Applications Monitored
+
+### CM (Conference Manager)
+- **Host**: `app1`
+- **Components**: Tomcat, HAProxy, Postfix
+- **Log Paths**:
+  - Tomcat: `/data/moad/logs/app1/usr/share/apache-tomcat-8.5.94/logs/catalina.out`
+  - HAProxy: `/data/moad/logs/app1/var/log/haproxy.log`
+  - Mail: `/data/moad/logs/app1/var/log/mail.log`
+
+### PFM (Permission Form Manager)
+- **Host**: `app2`
+- **Components**: Tomcat, HAProxy, Postfix
+- **Log Paths**:
+  - Tomcat: `/data/moad/logs/app2/usr/share/apache-tomcat-8.5.94/logs/catalina.out`
+  - HAProxy: `/data/moad/logs/app2/var/log/haproxy.log`
+  - Mail: `/data/moad/logs/app2/var/log/mail.log`
+
+## Event Taxonomy
+
+### Authentication Events
+- **Sources**: Tomcat, HAProxy
+- **Identifiers**: `username`, `email`, `user_id`, `client_ip`, `school_id`
+- **Join Path**: `users.userName` → `users.id` → `users.schoolId` → `schools.id`
+
+### PowerSchool Integration Events
+- **Source**: Tomcat ConsumerManager
+- **Identifiers**: `email`, `student_ids[]`, `school_id`
+- **Join Path**: `parents.email` → `parents.userId` → `users.id`
+
+### Email Events
+- **Source**: Postfix
+- **Identifiers**: `recipient_email`, `sender_email`
+- **Join Path**: `users.email` → `users.id` → `users.schoolId` → `schools.id`
+
+### HTTP Traffic Events
+- **Source**: HAProxy
+- **Identifiers**: `school_subdomain`, `school_id`, `client_ip`
+- **Join Path**: `schools.subdomain` → `schools.id`
+
+## Quick Start
+
+### Prerequisites
+
+- Docker and Docker Compose
+- Access to `/data/moad/logs` (NFS mount)
+- MySQL database accessible for metrics export
+
+### Environment Variables
+
+Create a `.env` file:
+
+```bash
+GRAFANA_ADMIN_PASSWORD=your_secure_password
+MYSQL_EXPORTER_PASSWORD=your_mysql_exporter_password
+MYSQL_GRAFANA_PASSWORD=your_grafana_readonly_password
+```
+
+### Start Services
+
+```bash
+docker-compose up -d
+```
+
+### Access Dashboards
+
+- Grafana: http://dev1.schoolsoft.net:3000
+  - Default credentials: `admin` / (from `.env`)
+- Prometheus: http://dev1.schoolsoft.net:9090
+- Loki: http://dev1.schoolsoft.net:3100
+
+## Configuration Files
+
+- `docker-compose.yml`: Service definitions
+- `vector/vector.yml`: Log processing pipeline
+- `loki/loki-config.yml`: Log aggregation configuration
+- `prometheus/prometheus.yml`: Metrics collection
+- `grafana/provisioning/`: Grafana datasources and dashboards
+
+## Documentation
+
+- [JOIN_COMPATIBILITY.md](docs/JOIN_COMPATIBILITY.md): Detailed design of join compatibility
+- [SCHEMA_MAPPING.md](docs/SCHEMA_MAPPING.md): Complete mapping of log fields to MySQL columns
+
+## Success Criteria
+
+- ✅ Any auth failure is visible within 30 seconds
+- ✅ All events are attributable to school and app
+- ✅ Database stress is explainable via application behavior
+- ✅ PowerSchool integrations are fully traceable
+- ✅ MOAD becomes the authoritative operational view
+
+## Non-Goals
+
+- ❌ No modification of SchoolSoft source code
+- ❌ No inline DB queries from Grafana (metrics only)
+- ❌ No duplication of raw logs
+
+## License
+
+Internal SchoolSoft project.
