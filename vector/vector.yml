@@ -104,7 +104,7 @@ transforms:
         # Extract username (normalized to match users.userName)
         .username = match(.message, r'(?:user|username|login)[\s:=]+([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|[a-zA-Z0-9._-]+)')
         if !is_null(.username) {
-          .username = downcase(.username)
+          .username = downcase(string!(.username))
           # Remove email domain if it's an email-style username
           .username_normalized = replace(.username, r'@.*$', "")
         }
@@ -112,7 +112,7 @@ transforms:
         # Extract email (normalized to match users.email)
         .email = match(.message, r'([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})')
         if !is_null(.email) {
-          .email = downcase(.email)
+          .email = downcase(string!(.email))
         }
         
         # Extract IP address (for users.lastKnownIP correlation)
@@ -142,7 +142,7 @@ transforms:
         # Extract email (for parents.email join)
         .email = match(.message, r'([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})')
         if !is_null(.email) {
-          .email = downcase(.email)
+          .email = downcase(string!(.email))
         }
         
         # Extract student IDs (for students.id join)
@@ -272,12 +272,12 @@ transforms:
         .event_category = "security"
         .username = match(.message, r'(?:user|username|login)[\s:=]+([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|[a-zA-Z0-9._-]+)')
         if !is_null(.username) {
-          .username = downcase(.username)
+          .username = downcase(string!(.username))
           .username_normalized = replace(.username, r'@.*$', "")
         }
         .email = match(.message, r'([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})')
         if !is_null(.email) {
-          .email = downcase(.email)
+          .email = downcase(string!(.email))
         }
         .client_ip = match(.message, r'\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b')
         .auth_result = match(.message, r'(?i)(success|successful|failed|failure|denied|invalid)') ?? "unknown"
@@ -296,7 +296,7 @@ transforms:
         .sis_identity = match(.message, r'(?:sis|external|powerschool)[\s:=]+([a-zA-Z0-9._-]+)')
         .email = match(.message, r'([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})')
         if !is_null(.email) {
-          .email = downcase(.email)
+          .email = downcase(string!(.email))
         }
         .student_ids = match(.message, r'(?:student|studentId)[\s:=]+(\d+)') ?? []
         if is_string(.student_ids) {
@@ -402,8 +402,8 @@ transforms:
       .user_agent = parsed.agent ?? null
       
       # Extract school from URL path (for schools.id join)
-      .school_subdomain = match(.http_path, r'/([a-z0-9-]+)/') ?? null
-      .school_id = match(.http_path, r'(?:school|schoolId)[\s:=/]+(\d+)') ?? null
+      .school_subdomain = match(.http_path, r'/([a-z0-9-]+)/')
+      .school_id = match(.http_path, r'(?:school|schoolId)[\s:=/]+(\d+)')
       if !is_null(.school_id) {
         .school_id = to_int(.school_id) ?? null
       }
@@ -422,9 +422,9 @@ transforms:
         .event_category = "security"
         
         # Extract username from path or query params
-        .username = match(.http_path, r'(?:user|username|login)[=/]([a-zA-Z0-9._-]+)') ?? null
+        .username = match(.http_path, r'(?:user|username|login)[=/]([a-zA-Z0-9._-]+)')
         if !is_null(.username) {
-          .username = downcase(.username)
+          .username = downcase(string!(.username))
           .username_normalized = replace(.username, r'@.*$', "")
         }
         
@@ -455,8 +455,8 @@ transforms:
       .http_path = parsed.request ?? null
       .http_status = parsed.status ?? null
       .user_agent = parsed.agent ?? null
-      .school_subdomain = match(.http_path, r'/([a-z0-9-]+)/') ?? null
-      .school_id = match(.http_path, r'(?:school|schoolId)[\s:=/]+(\d+)') ?? null
+      .school_subdomain = match(.http_path, r'/([a-z0-9-]+)/')
+      .school_id = match(.http_path, r'(?:school|schoolId)[\s:=/]+(\d+)')
       if !is_null(.school_id) {
         .school_id = to_int(.school_id) ?? null
       }
@@ -469,9 +469,9 @@ transforms:
       if match(.http_path, r'(?i)(login|auth|authenticate)') {
         .event_type = "authentication"
         .event_category = "security"
-        .username = match(.http_path, r'(?:user|username|login)[=/]([a-zA-Z0-9._-]+)') ?? null
+        .username = match(.http_path, r'(?:user|username|login)[=/]([a-zA-Z0-9._-]+)')
         if !is_null(.username) {
-          .username = downcase(.username)
+          .username = downcase(string!(.username))
           .username_normalized = replace(.username, r'@.*$', "")
         }
         if .http_status == "200" {
@@ -502,13 +502,13 @@ transforms:
       # Extract recipient email (normalized for users.email and parents.email join)
       .recipient_email = match(.message, r'to=<([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>')
       if !is_null(.recipient_email) {
-        .recipient_email = downcase(.recipient_email)
+        .recipient_email = downcase(string!(.recipient_email))
       }
       
       # Extract sender
       .sender_email = match(.message, r'from=<([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>')
       if !is_null(.sender_email) {
-        .sender_email = downcase(.sender_email)
+        .sender_email = downcase(string!(.sender_email))
       }
       
       # Email outcome (sent, bounced, deferred, rejected)
@@ -540,11 +540,11 @@ transforms:
       .event_category = "communication"
       .recipient_email = match(.message, r'to=<([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>')
       if !is_null(.recipient_email) {
-        .recipient_email = downcase(.recipient_email)
+        .recipient_email = downcase(string!(.recipient_email))
       }
       .sender_email = match(.message, r'from=<([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>')
       if !is_null(.sender_email) {
-        .sender_email = downcase(.sender_email)
+        .sender_email = downcase(string!(.sender_email))
       }
       .email_outcome = "unknown"
       if match(.message, r'(?i)(sent|delivered)') {
