@@ -2333,39 +2333,37 @@ generate_status_bar() {
     fi
     status_items+=("${vector_display}")
     
-    # Determine overall badge with color block
+    # Determine overall badge with color block (more descriptive label)
     local overall_color_block
     overall_color_block=$(get_status_color_block "$overall_health")
-    local overall_text=""
+    local overall_status_text=""
     case "$overall_health" in
         "healthy")
-            overall_text="HEALTHY"
+            overall_status_text="HEALTHY"
             ;;
         "warning")
-            overall_text="WARNING"
+            overall_status_text="WARNING"
             ;;
         *)
-            overall_text="FAILURE"
+            overall_status_text="FAILURE"
             ;;
     esac
-    local overall_badge="${overall_color_block} ${overall_text}"
+    local overall_badge="${overall_color_block}Overall:${overall_status_text}"
     
-    # Build status lines: first 4 monitors on row 1, remaining 4 on row 2
+    # Build status lines: exactly 4 monitor points per row
+    # Row 1: Overall + first 4 monitors (Overall + 4 = 5 items, but 4 monitor points)
+    # Row 2: remaining 4 monitors (4 monitor points)
     local line1=""
     local line2=""
     local total_items=${#status_items[@]}
     
-    # First line: overall badge + first 4 items
+    # First line: overall badge + first 4 monitor items
     line1="${overall_badge}"
     for ((i=0; i<4 && i<total_items; i++)); do
-        if [ -n "$line1" ]; then
-            line1="${line1} | ${status_items[$i]}"
-        else
-            line1="${status_items[$i]}"
-        fi
+        line1="${line1} | ${status_items[$i]}"
     done
     
-    # Second line: remaining items (items 4-7, which is 4 more items)
+    # Second line: remaining 4 monitor items (items 4-7, which is 4 items)
     if [ $total_items -gt 4 ]; then
         for ((i=4; i<total_items; i++)); do
             if [ -z "$line2" ]; then
@@ -2376,11 +2374,12 @@ generate_status_bar() {
         done
     fi
     
-    # Return formatted status bar (1-2 lines)
+    # Return formatted status bar (always 2 lines for consistent layout)
+    # Use printf to ensure newline is properly handled
     if [ -n "$line2" ]; then
-        echo -e "${line1}\n${line2}"
+        printf "%s\n%s" "$line1" "$line2"
     else
-        echo "${line1}"
+        printf "%s\n" "$line1"
     fi
 }
 
