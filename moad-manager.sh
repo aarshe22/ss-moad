@@ -1979,21 +1979,22 @@ restore_moad_config() {
 # STATUS BAR FUNCTIONS
 # ============================================================================
 
-# Function to get color block for status (GREEN=good, YELLOW=warning, RED=failure)
+# Function to get color block for status using dialog native colors
+# Dialog colors: \Z1=red, \Z2=green, \Z3=yellow, \Zn=reset
 get_status_color_block() {
     local status=$1
     case "$status" in
         "healthy"|"good"|"running"|"✓")
-            echo "${GREEN}█${NC}"
+            echo "\Z2[█]\Zn"
             ;;
         "warning"|"unhealthy"|"starting"|"⚠"|"⟳"|"?"|"⚠")
-            echo "${YELLOW}█${NC}"
+            echo "\Z3[█]\Zn"
             ;;
         "failure"|"exited"|"stopped"|"not_found"|"✗")
-            echo "${RED}█${NC}"
+            echo "\Z1[█]\Zn"
             ;;
         *)
-            echo "${YELLOW}█${NC}"
+            echo "\Z3[█]\Zn"
             ;;
     esac
 }
@@ -2421,6 +2422,7 @@ main_menu() {
         choice=$(dialog --colors --stdout --title "MOAD Stack Manager" \
             --extra-button --extra-label "Refresh" \
             --menu "$status_bar\n\nSelect an operation:" $adjusted_height 100 0 \
+            "0" " " \
             "1" "\Z4Environment\Zn: Generate .env File" \
             "2" "\Z4Environment\Zn: View .env File" \
             "3" "\Z2Docker\Zn: View Container Status" \
@@ -2458,6 +2460,10 @@ main_menu() {
         fi
         
         case "$choice" in
+            0)
+                # Dummy option - do nothing, just return to menu
+                continue
+                ;;
             1)
                 generate_env_file
                 ;;
