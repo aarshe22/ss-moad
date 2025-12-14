@@ -666,13 +666,152 @@ view_configuration_files() {
 }
 
 # ============================================================================
+# STATUS BAR FUNCTIONS
+# ============================================================================
+
+# Function to get container health status
+get_container_health() {
+    local container=$1
+    local health
+    
+    # Check if container exists
+    if ! docker ps -a --format "{{.Names}}" | grep -q "^${container}$"; then
+        echo "not_found"
+        return
+    fi
+    
+    # Get health status (if healthcheck is configured)
+    health=$(docker inspect --format='{{.State.Health.Status}}' "$container" 2>/dev/null || echo "none")
+    
+    # If no healthcheck, check if container is running
+    if [ "$health" = "none" ] || [ -z "$health" ]; then
+        local status
+        status=$(docker inspect --format='{{.State.Status}}' "$container" 2>/dev/null || echo "unknown")
+        if [ "$status" = "running" ]; then
+            echo "running"
+        else
+            echo "stopped"
+        fi
+    else
+        echo "$health"
+    fi
+}
+
+# Function to get container status summary
+get_container_status() {
+    local container=$1
+    local status
+    
+    if ! docker ps -a --format "{{.Names}}" | grep -q "^${container}$"; then
+        echo "not_found"
+        return
+    fi
+    
+    status=$(docker inspect --format='{{.State.Status}}' "$container" 2>/dev/null || echo "unknown")
+    echo "$status"
+}
+
+# Function to generate status bar
+generate_status_bar() {
+    local containers=("moad-vector" "moad-loki" "moad-prometheus" "moad-mysqld-exporter" "moad-grafana")
+    local status_line=""
+    local overall_health="healthy"
+    local healthy_count=0
+    local warning_count=0
+    local failure_count=0
+    local total_count=0
+    
+    for container in "${containers[@]}"; do
+        local status
+        local health
+        local display_name
+        
+        status=$(get_container_status "$container")
+        health=$(get_container_health "$container")
+        
+        # Get short name (remove moad- prefix)
+        display_name=$(echo "$container" | sed 's/^moad-//')
+        
+        # Determine health badge
+        local badge=""
+        if [ "$status" = "not_found" ] || [ "$status" = "exited" ] || [ "$status" = "stopped" ]; then
+            badge="✗"
+            overall_health="failure"
+            failure_count=$((failure_count + 1))
+        elif [ "$health" = "healthy" ] || ([ "$health" = "running" ] && [ "$status" = "running" ]); then
+            badge="✓"
+            healthy_count=$((healthy_count + 1))
+        elif [ "$health" = "unhealthy" ]; then
+            badge="⚠"
+            if [ "$overall_health" = "healthy" ]; then
+                overall_health="warning"
+            fi
+            warning_count=$((warning_count + 1))
+        elif [ "$health" = "starting" ]; then
+            badge="⟳"
+            if [ "$overall_health" = "healthy" ]; then
+                overall_health="warning"
+            fi
+            warning_count=$((warning_count + 1))
+        else
+            badge="?"
+            if [ "$overall_health" = "healthy" ]; then
+                overall_health="warning"
+            fi
+            warning_count=$((warning_count + 1))
+        fi
+        
+        # Build status line (format: badge name)
+        if [ -z "$status_line" ]; then
+            status_line="${badge}${display_name}"
+        else
+            status_line="${status_line} | ${badge}${display_name}"
+        fi
+        
+        total_count=$((total_count + 1))
+    done
+    
+    # Determine overall badge
+    local overall_badge=""
+    if [ "$overall_health" = "healthy" ]; then
+        overall_badge="✓ HEALTHY"
+    elif [ "$overall_health" = "warning" ]; then
+        overall_badge="⚠ WARNING"
+    else
+        overall_badge="✗ FAILURE"
+    fi
+    
+    # Return formatted status bar
+    echo "${overall_badge} | ${status_line}"
+}
+
+# Function to show status bar in dialog
+show_status_bar() {
+    local status_bar
+    status_bar=$(generate_status_bar)
+    
+    # Show status bar as a separate dialog box (non-blocking info)
+    # We'll integrate this into the menu title instead
+    echo "$status_bar"
+}
+
+# ============================================================================
 # MAIN MENU
 # ============================================================================
 
 main_menu() {
     while true; do
+        # Generate status bar
+        local status_bar
+        status_bar=$(generate_status_bar)
+        
+        # Extract overall health for title color/emphasis
+        local overall_status
+        overall_status=$(echo "$status_bar" | cut -d'|' -f1 | xargs)
+        
         choice=$(dialog --stdout --title "MOAD Stack Manager" \
-            --menu "Select an operation:" 22 70 15 \
+            --extra-button --extra-label "Refresh" \
+            --menu "$status_bar\n\nSelect an operation:" 24 85 18 \
             "1" "Environment: Generate .env File" \
             "2" "Environment: View .env File" \
             "3" "Docker: View Container Status" \
@@ -691,6 +830,19 @@ main_menu() {
             "16" "System: View System Resources" \
             "17" "Config: View Configuration Files" \
             "18" "Exit" 2>&1)
+        
+        # Handle extra button (Refresh) or ESC
+        local exit_code=$?
+        if [ $exit_code -eq 3 ]; then
+            # Refresh button pressed - just loop back to refresh status
+            continue
+        fi
+        
+        if [ $exit_code -ne 0 ]; then
+            # ESC or other error
+            clear
+            exit 0
+        fi
         
         case "$choice" in
             1)
@@ -746,11 +898,6 @@ main_menu() {
                 ;;
             18|"")
                 dialog --stdout --msgbox "Exiting MOAD Manager." 6 40 2>&1 >/dev/null
-                clear
-                exit 0
-                ;;
-            *)
-                # ESC or error
                 clear
                 exit 0
                 ;;
