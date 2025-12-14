@@ -288,6 +288,7 @@ These scripts ensure containers fail fast with clear error messages if configura
 **Getting Started:**
 - [QUICK_START.md](QUICK_START.md): Quick deployment guide
 - [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md): Comprehensive deployment checklist
+- [NEXT_STEPS_DASHBOARDS.md](NEXT_STEPS_DASHBOARDS.md): **Next steps for setting up amazing dashboards** ⭐
 - [CLEANUP.md](CLEANUP.md): Docker cleanup commands
 
 **Technical Documentation:**
