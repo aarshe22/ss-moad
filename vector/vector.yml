@@ -146,9 +146,11 @@ transforms:
         }
         
         # Extract student IDs (for students.id join)
-        .student_ids = match(.message, r'(?:student|studentId)[\s:=]+(\d+)') ?? []
+        .student_ids = match(.message, r'(?:student|studentId)[\s:=]+(\d+)')
         if is_string(.student_ids) {
           .student_ids = [.student_ids]
+        } else if is_null(.student_ids) {
+          .student_ids = []
         }
         
         # Extract school ID (for studentSchool.schoolId join)
@@ -298,9 +300,11 @@ transforms:
         if !is_null(.email) {
           .email = downcase(string!(.email))
         }
-        .student_ids = match(.message, r'(?:student|studentId)[\s:=]+(\d+)') ?? []
+        .student_ids = match(.message, r'(?:student|studentId)[\s:=]+(\d+)')
         if is_string(.student_ids) {
           .student_ids = [.student_ids]
+        } else if is_null(.student_ids) {
+          .student_ids = []
         }
         .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)')
         .integration_status = match(.message, r'(?i)(success|failed|error|completed)') ?? "unknown"
