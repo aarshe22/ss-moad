@@ -278,8 +278,37 @@ stop_all_containers() {
     
     dialog --stdout --yesno "Stop all MOAD containers?\n\nRunning containers:\n$running" 12 60 2>&1 >/dev/null
     if [ $? -eq 0 ]; then
-        dialog --stdout --infobox "Stopping all containers..." 5 50 2>&1 >/dev/null
-        if docker compose stop >/dev/null 2>&1; then
+        local result=1
+        {
+            echo "XXX"
+            echo "0"
+            echo "Stopping containers..."
+            echo "XXX"
+            sleep 1
+            
+            echo "XXX"
+            echo "50"
+            echo "Stopping containers..."
+            echo "XXX"
+            
+            docker compose stop >/dev/null 2>&1
+            result=$?
+            
+            if [ $result -eq 0 ]; then
+                echo "XXX"
+                echo "100"
+                echo "✓ All containers stopped successfully!"
+                echo "XXX"
+            else
+                echo "XXX"
+                echo "100"
+                echo "✗ Failed to stop containers"
+                echo "XXX"
+            fi
+            sleep 1
+        } | dialog --colors --gauge "Stopping containers..." 8 60 0
+        
+        if [ $result -eq 0 ]; then
             dialog --stdout --msgbox "All containers stopped successfully." 8 50 2>&1 >/dev/null
         else
             dialog --stdout --msgbox "Error: Failed to stop containers." 8 50 2>&1 >/dev/null
@@ -289,20 +318,154 @@ stop_all_containers() {
 
 start_all_containers() {
     local stopped
+    local all_containers
     stopped=$(get_stopped_containers)
+    all_containers=$(get_all_containers)
     
-    if [ -z "$stopped" ]; then
-        dialog --stdout --msgbox "No stopped containers to start." 8 50 2>&1 >/dev/null
+    # If no containers exist at all, we need to create them
+    if [ -z "$all_containers" ]; then
+        dialog --stdout --yesno "No containers exist. Create and start all MOAD containers?\n\nThis will create and start:\n- vector\n- loki\n- prometheus\n- mysqld-exporter\n- grafana" 12 60 2>&1 >/dev/null
+        if [ $? -eq 0 ]; then
+            local result=1
+            {
+                echo "XXX"
+                echo "0"
+                echo "Creating containers..."
+                echo "XXX"
+                sleep 1
+                
+                echo "XXX"
+                echo "50"
+                echo "Starting containers..."
+                echo "XXX"
+                
+                docker compose up -d >/dev/null 2>&1
+                result=$?
+                
+                if [ $result -eq 0 ]; then
+                    echo "XXX"
+                    echo "100"
+                    echo "✓ All containers created and started successfully!"
+                    echo "XXX"
+                else
+                    echo "XXX"
+                    echo "100"
+                    echo "✗ Failed to create/start containers"
+                    echo "XXX"
+                fi
+                sleep 1
+            } | dialog --colors --gauge "Creating and starting containers..." 8 60 0
+            
+            if [ $result -eq 0 ]; then
+                dialog --stdout --msgbox "All containers created and started successfully." 8 50 2>&1 >/dev/null
+            else
+                dialog --stdout --msgbox "Error: Failed to create/start containers.\n\nCheck logs for details." 10 50 2>&1 >/dev/null
+            fi
+        fi
         return
     fi
     
-    dialog --stdout --yesno "Start all MOAD containers?\n\nStopped containers:\n$stopped" 12 60 2>&1 >/dev/null
+    # If containers exist but none are stopped
+    if [ -z "$stopped" ]; then
+        dialog --stdout --msgbox "All containers are already running." 8 50 2>&1 >/dev/null
+        return
+    fi
+    
+    # Start stopped containers
+    dialog --stdout --yesno "Start all stopped MOAD containers?\n\nStopped containers:\n$stopped" 12 60 2>&1 >/dev/null
     if [ $? -eq 0 ]; then
-        dialog --stdout --infobox "Starting all containers..." 5 50 2>&1 >/dev/null
-        if docker compose up -d >/dev/null 2>&1; then
+        local result=1
+        {
+            echo "XXX"
+            echo "0"
+            echo "Starting containers..."
+            echo "XXX"
+            sleep 1
+            
+            echo "XXX"
+            echo "50"
+            echo "Starting containers..."
+            echo "XXX"
+            
+            docker compose start >/dev/null 2>&1
+            result=$?
+            
+            if [ $result -eq 0 ]; then
+                echo "XXX"
+                echo "100"
+                echo "✓ All containers started successfully!"
+                echo "XXX"
+            else
+                echo "XXX"
+                echo "100"
+                echo "✗ Failed to start containers"
+                echo "XXX"
+            fi
+            sleep 1
+        } | dialog --colors --gauge "Starting containers..." 8 60 0
+        
+        if [ $result -eq 0 ]; then
             dialog --stdout --msgbox "All containers started successfully." 8 50 2>&1 >/dev/null
         else
             dialog --stdout --msgbox "Error: Failed to start containers." 8 50 2>&1 >/dev/null
+        fi
+    fi
+}
+
+# Function to create and start containers (build if needed)
+create_and_start_containers() {
+    local all_containers
+    all_containers=$(get_all_containers)
+    
+    if [ -n "$all_containers" ]; then
+        dialog --stdout --yesno "Containers already exist. Recreate and start all MOAD containers?\n\nThis will recreate:\n$all_containers\n\nExisting containers will be stopped and recreated." 14 60 2>&1 >/dev/null
+        if [ $? -ne 0 ]; then
+            return
+        fi
+    fi
+    
+    dialog --stdout --yesno "Create and start all MOAD containers?\n\nThis will:\n- Create containers from images\n- Start all services\n- Build if needed" 12 60 2>&1 >/dev/null
+    if [ $? -eq 0 ]; then
+        local result=1
+        {
+            echo "XXX"
+            echo "0"
+            echo "Building images (if needed)..."
+            echo "XXX"
+            sleep 1
+            
+            echo "XXX"
+            echo "30"
+            echo "Creating containers..."
+            echo "XXX"
+            sleep 1
+            
+            echo "XXX"
+            echo "60"
+            echo "Starting containers..."
+            echo "XXX"
+            
+            docker compose up -d --build >/dev/null 2>&1
+            result=$?
+            
+            if [ $result -eq 0 ]; then
+                echo "XXX"
+                echo "100"
+                echo "✓ All containers created and started successfully!"
+                echo "XXX"
+            else
+                echo "XXX"
+                echo "100"
+                echo "✗ Failed to create/start containers"
+                echo "XXX"
+            fi
+            sleep 1
+        } | dialog --colors --gauge "Creating and starting containers..." 8 60 0
+        
+        if [ $result -eq 0 ]; then
+            dialog --stdout --msgbox "All containers created and started successfully." 8 50 2>&1 >/dev/null
+        else
+            dialog --stdout --msgbox "Error: Failed to create/start containers.\n\nCheck logs for details." 10 50 2>&1 >/dev/null
         fi
     fi
 }
@@ -318,8 +481,37 @@ restart_all_containers() {
     
     dialog --stdout --yesno "Restart all MOAD containers?\n\nContainers:\n$all_containers" 12 60 2>&1 >/dev/null
     if [ $? -eq 0 ]; then
-        dialog --stdout --infobox "Restarting all containers..." 5 50 2>&1 >/dev/null
-        if docker compose restart >/dev/null 2>&1; then
+        local result=1
+        {
+            echo "XXX"
+            echo "0"
+            echo "Stopping containers..."
+            echo "XXX"
+            sleep 1
+            
+            echo "XXX"
+            echo "50"
+            echo "Starting containers..."
+            echo "XXX"
+            
+            docker compose restart >/dev/null 2>&1
+            result=$?
+            
+            if [ $result -eq 0 ]; then
+                echo "XXX"
+                echo "100"
+                echo "✓ All containers restarted successfully!"
+                echo "XXX"
+            else
+                echo "XXX"
+                echo "100"
+                echo "✗ Failed to restart containers"
+                echo "XXX"
+            fi
+            sleep 1
+        } | dialog --colors --gauge "Restarting containers..." 8 60 0
+        
+        if [ $result -eq 0 ]; then
             dialog --stdout --msgbox "All containers restarted successfully." 8 50 2>&1 >/dev/null
         else
             dialog --stdout --msgbox "Error: Failed to restart containers." 8 50 2>&1 >/dev/null
@@ -450,17 +642,54 @@ view_recent_errors() {
 
 pull_latest_images() {
     dialog --stdout --yesno "Pull latest images for all MOAD services?" 8 50 2>&1 >/dev/null
-    if [ $? -eq 0 ]; then
-        dialog --stdout --infobox "Pulling latest images..." 5 50 2>&1 >/dev/null
-        local output
-        output=$(docker compose pull 2>&1)
-        
-        if [ $? -eq 0 ]; then
-            dialog --stdout --msgbox "Images pulled successfully.\n\n$output" 15 70 2>&1 >/dev/null
-        else
-            dialog --stdout --msgbox "Error pulling images:\n\n$output" 15 70 2>&1 >/dev/null
-        fi
+    if [ $? -ne 0 ]; then
+        return
     fi
+    
+    local images=("timberio/vector:0.38.0-alpine" "grafana/loki:2.9.0" "prom/prometheus:v2.48.0" "prom/mysqld-exporter:v0.15.1" "grafana/grafana:12.3.0")
+    local image_names=("vector" "loki" "prometheus" "mysqld-exporter" "grafana")
+    local total=${#images[@]}
+    local current=0
+    
+    # Create progress display
+    {
+        for i in "${!images[@]}"; do
+            current=$((i + 1))
+            local percent=$((current * 100 / total))
+            local image_name="${image_names[$i]}"
+            
+            echo "XXX"
+            echo "$percent"
+            echo "Pulling image $current/$total: $image_name..."
+            echo "XXX"
+            
+            # Pull the image and capture output
+            docker pull "${images[$i]}" >/dev/null 2>&1
+            local pull_status=$?
+            
+            if [ $pull_status -eq 0 ]; then
+                echo "XXX"
+                echo "$percent"
+                echo "✓ $image_name: Pulled successfully"
+                echo "XXX"
+            else
+                echo "XXX"
+                echo "$percent"
+                echo "✗ $image_name: Pull failed"
+                echo "XXX"
+            fi
+            
+            sleep 0.5
+        done
+        
+        echo "XXX"
+        echo "100"
+        echo "All images pulled successfully!"
+        echo "XXX"
+        sleep 1
+    } | dialog --colors --gauge "Pulling latest images..." 10 70 0
+    
+    dialog --stdout --msgbox "Image pull completed." 8 50 2>&1 >/dev/null
 }
 
 complete_prune_purge() {
@@ -809,27 +1038,28 @@ main_menu() {
         local overall_status
         overall_status=$(echo "$status_bar" | cut -d'|' -f1 | xargs)
         
-        choice=$(dialog --stdout --title "MOAD Stack Manager" \
+        choice=$(dialog --colors --stdout --title "MOAD Stack Manager" \
             --extra-button --extra-label "Refresh" \
-            --menu "$status_bar\n\nSelect an operation:" 24 85 18 \
-            "1" "Environment: Generate .env File" \
-            "2" "Environment: View .env File" \
-            "3" "Docker: View Container Status" \
-            "4" "Docker: Start All Containers" \
-            "5" "Docker: Stop All Containers" \
-            "6" "Docker: Restart All Containers" \
-            "7" "Docker: Restart Individual Container" \
-            "8" "Docker: View Container Logs" \
-            "9" "Docker: View Recent Errors" \
-            "10" "Docker: Pull Latest Images" \
-            "11" "Docker: Complete Prune & Purge (DESTRUCTIVE)" \
-            "12" "Services: Show Service URLs" \
-            "13" "Services: Check Service Health" \
-            "14" "Services: Test MySQL Connectivity" \
-            "15" "System: View Disk Usage" \
-            "16" "System: View System Resources" \
-            "17" "Config: View Configuration Files" \
-            "18" "Exit" 2>&1)
+            --menu "$status_bar\n\nSelect an operation:" 26 85 20 \
+            "1" "\Z4Environment\Zn: Generate .env File" \
+            "2" "\Z4Environment\Zn: View .env File" \
+            "3" "\Z2Docker\Zn: View Container Status" \
+            "4" "\Z2Docker\Zn: Start All Containers" \
+            "5" "\Z2Docker\Zn: Create & Start (Build if needed)" \
+            "6" "\Z2Docker\Zn: Stop All Containers" \
+            "7" "\Z2Docker\Zn: Restart All Containers" \
+            "8" "\Z2Docker\Zn: Restart Individual Container" \
+            "9" "\Z2Docker\Zn: View Container Logs" \
+            "10" "\Z2Docker\Zn: View Recent Errors" \
+            "11" "\Z2Docker\Zn: Pull Latest Images" \
+            "12" "\Z1Docker\Zn: Complete Prune & Purge (DESTRUCTIVE)" \
+            "13" "\Z6Services\Zn: Show Service URLs" \
+            "14" "\Z6Services\Zn: Check Service Health" \
+            "15" "\Z6Services\Zn: Test MySQL Connectivity" \
+            "16" "\Z3System\Zn: View Disk Usage" \
+            "17" "\Z3System\Zn: View System Resources" \
+            "18" "\Z5Config\Zn: View Configuration Files" \
+            "19" "Exit" 2>&1)
         
         # Handle extra button (Refresh) or ESC
         local exit_code=$?
@@ -858,45 +1088,48 @@ main_menu() {
                 start_all_containers
                 ;;
             5)
-                stop_all_containers
+                create_and_start_containers
                 ;;
             6)
-                restart_all_containers
+                stop_all_containers
                 ;;
             7)
-                restart_individual_container
+                restart_all_containers
                 ;;
             8)
-                view_container_logs
+                restart_individual_container
                 ;;
             9)
-                view_recent_errors
+                view_container_logs
                 ;;
             10)
-                pull_latest_images
+                view_recent_errors
                 ;;
             11)
-                complete_prune_purge
+                pull_latest_images
                 ;;
             12)
-                show_service_urls
+                complete_prune_purge
                 ;;
             13)
-                check_service_health
+                show_service_urls
                 ;;
             14)
-                test_mysql_connectivity
+                check_service_health
                 ;;
             15)
-                show_disk_usage
+                test_mysql_connectivity
                 ;;
             16)
-                show_system_resources
+                show_disk_usage
                 ;;
             17)
+                show_system_resources
+                ;;
+            18)
                 view_configuration_files
                 ;;
-            18|"")
+            19|"")
                 dialog --stdout --msgbox "Exiting MOAD Manager." 6 40 2>&1 >/dev/null
                 clear
                 exit 0
