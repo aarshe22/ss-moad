@@ -21,6 +21,7 @@ cd ss-moad
 cat > .env << EOF
 GRAFANA_ADMIN_PASSWORD=your_secure_password_here
 MYSQL_HOST=192.168.1.100
+MYSQL_MOAD_RO_USER=moad_ro
 MYSQL_MOAD_RO_PASSWORD=your_moad_ro_password
 MYSQL_GRAFANA_PASSWORD=your_grafana_readonly_password
 EOF
@@ -28,7 +29,8 @@ EOF
 
 **Note:** 
 - `MYSQL_HOST` should be the IP address or hostname of your MySQL server (IP recommended for Docker networks)
-- `MYSQL_MOAD_RO_PASSWORD` is for the `moad_ro` MySQL user (read-only access to schoolsoft and permissionMan databases)
+- `MYSQL_MOAD_RO_USER` is the MySQL username (default: `moad_ro`)
+- `MYSQL_MOAD_RO_PASSWORD` is the password for the MySQL user (read-only access to schoolsoft and permissionMan databases)
 
 ## 4. Verify Log Paths
 

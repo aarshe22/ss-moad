@@ -32,7 +32,7 @@ docker compose logs --tail 50
 - Verify: MySQL host is accessible
 - Verify: `MYSQL_HOST` is set in `.env` file (IP address or hostname)
 - Verify: `MYSQL_MOAD_RO_PASSWORD` is set in `.env`
-- Verify: `moad_ro` user exists and has correct permissions
+- Verify: MySQL user (from `MYSQL_MOAD_RO_USER`) exists and has correct permissions
 
 ## Quick Fixes
 
@@ -47,12 +47,13 @@ docker logs moad-vector 2>&1 | grep -i error
 
 ### If MySQL Exporter is failing:
 ```bash
-# Verify .env file has both MYSQL_HOST and password
+# Verify .env file has all required MySQL variables
 cat .env | grep MYSQL_HOST
+cat .env | grep MYSQL_MOAD_RO_USER
 cat .env | grep MYSQL_MOAD_RO_PASSWORD
 
-# Test MySQL connection (replace ${MYSQL_HOST} with actual value from .env)
-docker run --rm --network ss-moad_moad-network mysql:8.0 mysql -h ${MYSQL_HOST} -u moad_ro -p${MYSQL_MOAD_RO_PASSWORD} -e "SELECT 1"
+# Test MySQL connection (replace variables with actual values from .env)
+docker run --rm --network ss-moad_moad-network mysql:8.0 mysql -h ${MYSQL_HOST} -u ${MYSQL_MOAD_RO_USER} -p${MYSQL_MOAD_RO_PASSWORD} -e "SELECT 1"
 
 # Check if MySQL host is reachable from container network
 docker run --rm --network ss-moad_moad-network alpine ping -c 3 ${MYSQL_HOST}

@@ -10,8 +10,9 @@ Extended MOAD to include comprehensive MySQL observability for both `schoolsoft`
 
 **File:** `docker-compose.yml`
 
-- Updated MySQL exporter to use `moad_ro` user instead of generic `exporter` user
+- Updated MySQL exporter to use configurable user via `MYSQL_MOAD_RO_USER` (default: `moad_ro`) instead of generic `exporter` user
 - Changed environment variable from `MYSQL_EXPORTER_PASSWORD` to `MYSQL_MOAD_RO_PASSWORD`
+- Added `MYSQL_MOAD_RO_USER` environment variable for configurable MySQL username
 - Added documentation comments about read-only access model
 
 ### 2. Prometheus Configuration
@@ -136,10 +137,11 @@ Comprehensive guide covering:
 
 ## MySQL User Requirements
 
-### User: `moad_ro`
+### User: Configurable via `MYSQL_MOAD_RO_USER` (default: `moad_ro`)
 
 **Required Grants:**
 ```sql
+-- Replace 'moad_ro' with your actual username (from MYSQL_MOAD_RO_USER) if different
 GRANT SELECT ON schoolsoft.* TO 'moad_ro'@'%';
 GRANT SELECT ON permissionMan.* TO 'moad_ro'@'%';
 GRANT SELECT ON performance_schema.* TO 'moad_ro'@'%';
@@ -160,12 +162,13 @@ GRANT SELECT ON information_schema.* TO 'moad_ro'@'%';
 
 Update `.env` file:
 ```bash
+MYSQL_MOAD_RO_USER=moad_ro
 MYSQL_MOAD_RO_PASSWORD=your_moad_ro_password
 ```
 
 ### MySQL Configuration
 
-1. Create `moad_ro` user with read-only grants
+1. Create MySQL user (from `MYSQL_MOAD_RO_USER`) with read-only grants
 2. Ensure `performance_schema` is enabled
 3. Update `docker-compose.yml` line 56 with actual MySQL hostname/IP
 4. Verify both `schoolsoft` and `permissionMan` databases exist

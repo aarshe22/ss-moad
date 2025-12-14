@@ -71,7 +71,7 @@ MOAD includes comprehensive MySQL observability for both `schoolsoft` and `permi
 - **Application Analytics**: Form lifecycle, per-school activity, integration task timing, growth trends
 - **Correlation**: Database performance correlated with application logs and user activity
 
-**MySQL User:** `moad_ro` (read-only, least privilege)
+**MySQL User:** Configurable via `MYSQL_MOAD_RO_USER` (default: `moad_ro`, read-only, least privilege)
 
 See [docs/MYSQL_MONITORING.md](docs/MYSQL_MONITORING.md) for detailed documentation.
 
@@ -123,6 +123,7 @@ Create a `.env` file:
 ```bash
 GRAFANA_ADMIN_PASSWORD=your_secure_password
 MYSQL_HOST=192.168.1.100
+MYSQL_MOAD_RO_USER=moad_ro
 MYSQL_MOAD_RO_PASSWORD=your_moad_ro_password
 MYSQL_GRAFANA_PASSWORD=your_grafana_readonly_password
 ```

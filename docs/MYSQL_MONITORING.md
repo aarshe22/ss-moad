@@ -6,9 +6,9 @@ MOAD includes comprehensive MySQL observability covering both business data anal
 
 ## MySQL Exporter Configuration
 
-### User: `moad_ro`
+### User: Configurable via `MYSQL_MOAD_RO_USER`
 
-The MySQL exporter uses a read-only user `moad_ro` with the following access:
+The MySQL exporter uses a read-only user (default: `moad_ro`, configurable via `MYSQL_MOAD_RO_USER` environment variable) with the following access:
 
 **Grants:**
 - `SELECT ON schoolsoft.*`
@@ -28,10 +28,13 @@ The MySQL exporter uses a read-only user `moad_ro` with the following access:
 
 Configured in `docker-compose.yml`:
 ```yaml
-DATA_SOURCE_NAME: "moad_ro:${MYSQL_MOAD_RO_PASSWORD}@tcp(${MYSQL_HOST}:3306)/"
+DATA_SOURCE_NAME: "${MYSQL_MOAD_RO_USER}:${MYSQL_MOAD_RO_PASSWORD}@tcp(${MYSQL_HOST}:3306)/"
 ```
 
-**Note:** `MYSQL_HOST` must be set in `.env` file (IP address or hostname). Using an IP address is recommended for reliability in Docker networks.
+**Note:** 
+- `MYSQL_HOST` must be set in `.env` file (IP address or hostname). Using an IP address is recommended for reliability in Docker networks.
+- `MYSQL_MOAD_RO_USER` must be set in `.env` file (default: `moad_ro`)
+- `MYSQL_MOAD_RO_PASSWORD` must be set in `.env` file
 
 ## Performance Metrics
 
@@ -261,7 +264,7 @@ Per MOAD non-goals:
 ### MySQL Exporter Not Connecting
 
 1. Verify MySQL host is accessible from container network
-2. Check `moad_ro` user exists and has correct grants
+2. Check MySQL user (from `MYSQL_MOAD_RO_USER`) exists and has correct grants
 3. Verify password in `.env` file
 4. Check exporter logs: `docker logs moad-mysqld-exporter`
 

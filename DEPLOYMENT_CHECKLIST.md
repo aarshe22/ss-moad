@@ -24,13 +24,15 @@ Create `.env` file with:
 ```bash
 GRAFANA_ADMIN_PASSWORD=<secure_password>
 MYSQL_HOST=<mysql_server_ip_or_hostname>
-MYSQL_MOAD_RO_PASSWORD=<moad_ro_password>
+MYSQL_MOAD_RO_USER=<mysql_username>
+MYSQL_MOAD_RO_PASSWORD=<mysql_password>
 MYSQL_GRAFANA_PASSWORD=<grafana_readonly_password>
 ```
 
 **Note:** 
 - `MYSQL_HOST` should be the IP address or hostname of your MySQL server (IP recommended for Docker networks)
-- `MYSQL_MOAD_RO_PASSWORD` is for the `moad_ro` MySQL user which has:
+- `MYSQL_MOAD_RO_USER` is the MySQL username (default: `moad_ro`)
+- `MYSQL_MOAD_RO_PASSWORD` is the password for the MySQL user which has:
 - `SELECT ON schoolsoft.*`
 - `SELECT ON permissionMan.*`
 - `SELECT ON performance_schema.*`
@@ -52,7 +54,7 @@ Ensure `/data/moad/logs` is accessible:
 #### 3. MySQL Database Access
 - MySQL host accessible from `mysqld-exporter` container
 - `MYSQL_HOST` environment variable set in `.env` file (IP address or hostname)
-- MySQL user `moad_ro` exists with read-only permissions:
+- MySQL user (configured via `MYSQL_MOAD_RO_USER`) exists with read-only permissions:
   - `SELECT ON schoolsoft.*`
   - `SELECT ON permissionMan.*`
   - `SELECT ON performance_schema.*`

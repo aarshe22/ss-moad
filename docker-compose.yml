@@ -51,7 +51,7 @@ services:
       - moad-network
 
   # MySQL Exporter - Database metrics
-  # Uses read-only user moad_ro with access to:
+  # Uses read-only user (configurable via MYSQL_MOAD_RO_USER) with access to:
   # - schoolsoft.* (SELECT)
   # - permissionMan.* (SELECT)
   # - performance_schema.* (SELECT)
@@ -60,13 +60,14 @@ services:
     image: prom/mysqld-exporter:v0.15.1
     container_name: moad-mysqld-exporter
     environment:
-      DATA_SOURCE_NAME: "moad_ro:${MYSQL_MOAD_RO_PASSWORD}@tcp(${MYSQL_HOST}:3306)/"
+      DATA_SOURCE_NAME: "${MYSQL_MOAD_RO_USER}:${MYSQL_MOAD_RO_PASSWORD}@tcp(${MYSQL_HOST}:3306)/"
     ports:
       - "9104:9104"
     restart: unless-stopped
     networks:
       - moad-network
     # Note: MYSQL_HOST must be set in .env file (IP address or hostname of MySQL server)
+    # Note: MYSQL_MOAD_RO_USER must be set in .env file (default: moad_ro)
     # Note: MYSQL_MOAD_RO_PASSWORD must be set in .env file
 
   # Grafana - Visualization and dashboards

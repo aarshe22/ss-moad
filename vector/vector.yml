@@ -672,8 +672,7 @@ sinks:
     type: file
     inputs:
       - normalize_identifiers
-    path: /var/lib/vector/structured
-    filename_extension: jsonl
+    path: /var/lib/vector/structured/vector-%Y-%m-%d.jsonl
     encoding:
       codec: json
     compression: gzip
