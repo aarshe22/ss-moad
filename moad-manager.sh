@@ -2034,37 +2034,34 @@ check_mysql_status_quick() {
 
 # Function to check NFS mount status
 check_nfs_mount_status() {
-    local mount_path="/data/moad/logs"
+    # Check NFS mounts: app1:/ mounted at /data/logs/app1 and app2:/ mounted at /data/logs/app2
+    # If 'usr' and 'var' directories exist below these paths, NFS is mounted
+    local app1_mount="/data/logs/app1"
+    local app2_mount="/data/logs/app2"
+    local app1_healthy=false
+    local app2_healthy=false
     
-    # Check if path exists
-    if [ ! -d "$mount_path" ]; then
-        echo "failure"
-        return
-    fi
-    
-    # Check if path is readable
-    if [ ! -r "$mount_path" ]; then
-        echo "failure"
-        return
-    fi
-    
-    # Check if it's a mount point
-    if mountpoint -q "$mount_path" 2>/dev/null; then
-        # Check if it's NFS (preferred) or another remote filesystem
-        if mount | grep -qE "$mount_path.*(nfs|nfs4)"; then
-            echo "healthy"
-        else
-            # Mounted but not NFS - still OK (could be CIFS, etc.)
-            echo "healthy"
+    # Check app1 mount
+    if [ -d "$app1_mount" ] && [ -r "$app1_mount" ]; then
+        if [ -d "$app1_mount/usr" ] && [ -d "$app1_mount/var" ]; then
+            app1_healthy=true
         fi
+    fi
+    
+    # Check app2 mount
+    if [ -d "$app2_mount" ] && [ -r "$app2_mount" ]; then
+        if [ -d "$app2_mount/usr" ] && [ -d "$app2_mount/var" ]; then
+            app2_healthy=true
+        fi
+    fi
+    
+    # Return status based on both mounts
+    if [ "$app1_healthy" = true ] && [ "$app2_healthy" = true ]; then
+        echo "healthy"
+    elif [ "$app1_healthy" = true ] || [ "$app2_healthy" = true ]; then
+        echo "warning"  # One mount is healthy, one is not
     else
-        # Not a mount point - might be local directory (OK for development)
-        # Check if expected log directories exist
-        if [ -d "$mount_path/app1" ] || [ -d "$mount_path/app2" ]; then
-            echo "warning"
-        else
-            echo "failure"
-        fi
+        echo "failure"  # Neither mount is healthy
     fi
 }
 
@@ -2316,19 +2313,18 @@ generate_status_bar() {
     # Format vector stats for display
     local vector_display=""
     if [ "$vector_record_count" = "0" ]; then
-        vector_display="0r"
+        vector_display="0 records"
     else
         # Format large numbers with K/M suffix
         if [ "$vector_record_count" -gt 1000000 ]; then
             vector_display=$(echo "scale=1; $vector_record_count/1000000" | bc 2>/dev/null | sed 's/\.0$//')
-            vector_display="${vector_display}M"
+            vector_display="${vector_display}M records"
         elif [ "$vector_record_count" -gt 1000 ]; then
             vector_display=$(echo "scale=1; $vector_record_count/1000" | bc 2>/dev/null | sed 's/\.0$//')
-            vector_display="${vector_display}K"
+            vector_display="${vector_display}K records"
         else
-            vector_display="$vector_record_count"
+            vector_display="${vector_record_count} records"
         fi
-        vector_display="${vector_display}r"
         if [ -n "$vector_latest_time" ]; then
             local compact_time
             compact_time=$(echo "$vector_latest_time" | sed 's/^[0-9]\{4\}-//' | cut -d' ' -f1,2)
@@ -2354,15 +2350,14 @@ generate_status_bar() {
     esac
     local overall_badge="${overall_color_block} ${overall_text}"
     
-    # Build status lines (split into 1-2 lines if needed)
+    # Build status lines: first 4 monitors on row 1, remaining 4 on row 2
     local line1=""
     local line2=""
     local total_items=${#status_items[@]}
-    local items_per_line=$(( (total_items + 1) / 2 ))  # Distribute evenly
     
-    # First line: overall badge + first half of items
+    # First line: overall badge + first 4 items
     line1="${overall_badge}"
-    for ((i=0; i<items_per_line && i<total_items; i++)); do
+    for ((i=0; i<4 && i<total_items; i++)); do
         if [ -n "$line1" ]; then
             line1="${line1} | ${status_items[$i]}"
         else
@@ -2370,9 +2365,9 @@ generate_status_bar() {
         fi
     done
     
-    # Second line: remaining items (if any)
-    if [ $total_items -gt $items_per_line ]; then
-        for ((i=items_per_line; i<total_items; i++)); do
+    # Second line: remaining items (items 4-7, which is 4 more items)
+    if [ $total_items -gt 4 ]; then
+        for ((i=4; i<total_items; i++)); do
             if [ -z "$line2" ]; then
                 line2="${status_items[$i]}"
             else
