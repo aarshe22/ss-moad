@@ -1,0 +1,30 @@
+MOAD File Inventory
+===================
+
+Configuration Files:
+- docker-compose.yml (Service definitions)
+- vector/vector.yml (Log processing pipeline)
+- loki/loki-config.yml (Log aggregation)
+- prometheus/prometheus.yml (Metrics collection)
+- grafana/provisioning/datasources/datasources.yml (Grafana datasources)
+- grafana/provisioning/dashboards/dashboards.yml (Dashboard provisioning)
+
+Dashboards:
+- grafana/dashboards/authentication-failures.json (Sample dashboard)
+
+Documentation:
+- README.md (Project overview)
+- QUICK_START.md (Quick deployment guide)
+- DEPLOYMENT_CHECKLIST.md (Comprehensive checklist)
+- docs/JOIN_COMPATIBILITY.md (Join compatibility design)
+- docs/SCHEMA_MAPPING.md (Schema mapping reference)
+- docs/VALIDATION_GUIDE.md (Validation procedures)
+- docs/IDENTIFIER_EXTRACTION_REFERENCE.md (Extraction patterns)
+
+Directories:
+- vector/structured/ (Output directory for structured logs)
+- docs/ (Documentation directory)
+- grafana/ (Grafana configuration and dashboards)
+- loki/ (Loki configuration)
+- prometheus/ (Prometheus configuration)
+
