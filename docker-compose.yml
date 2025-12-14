@@ -100,5 +100,3 @@ volumes:
 networks:
   moad-network:
     driver: bridge
-
-
