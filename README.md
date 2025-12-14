@@ -118,6 +118,20 @@ See [docs/MYSQL_MONITORING.md](docs/MYSQL_MONITORING.md) for detailed documentat
 
 ### Environment Variables
 
+**Option 1: Use the MOAD Manager (Recommended)**
+
+```bash
+./moad-manager.sh
+# Select "1. Environment: Generate .env File" from the menu
+```
+
+This will:
+- Prompt for MySQL configuration (host, user, password)
+- Generate secure random 14-character passwords for Grafana and MySQL Grafana user
+- Create the `.env` file automatically
+
+**Option 2: Create manually**
+
 Create a `.env` file:
 
 ```bash
@@ -145,7 +159,13 @@ docker compose up -d
 
 ## Scripts
 
-- `docker-reset.sh`: Complete Docker cleanup script (removes all containers, volumes, networks, images)
+- `moad-manager.sh`: Comprehensive MOAD stack management interface with dialog UI
+  - Environment file generation and management
+  - Docker container operations (start/stop/restart, logs, errors)
+  - Service health checks and connectivity tests
+  - System resource monitoring
+  - Configuration file viewing
+  - Complete Docker cleanup (prune & purge)
 
 ## Configuration Files
 

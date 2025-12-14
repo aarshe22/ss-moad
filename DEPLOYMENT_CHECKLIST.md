@@ -78,9 +78,21 @@ git pull origin main
 ```
 
 ### 2. Create Environment File
+
+**Option 1: Use MOAD Manager (Recommended)**
 ```bash
+./moad-manager.sh
+# Select "1. Environment: Generate .env File" from the menu
+```
+
+This will prompt for MySQL configuration and generate secure random passwords.
+
+**Option 2: Create manually**
+```bash
+# Copy example and edit
 cp .env.example .env
 # Edit .env with actual values
+nano .env
 ```
 
 ### 3. Configure MySQL Host
