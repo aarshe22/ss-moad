@@ -20,28 +20,15 @@ cd ss-moad
 # Create .env file
 cat > .env << EOF
 GRAFANA_ADMIN_PASSWORD=your_secure_password_here
+MYSQL_HOST=192.168.1.100
 MYSQL_MOAD_RO_PASSWORD=your_moad_ro_password
 MYSQL_GRAFANA_PASSWORD=your_grafana_readonly_password
 EOF
 ```
 
-**Note:** `MYSQL_MOAD_RO_PASSWORD` is for the `moad_ro` MySQL user (read-only access to schoolsoft and permissionMan databases).
-
-## 3. Configure MySQL Host Alias
-
-Add `mysql-host` as an alias in your Docker host's `/etc/hosts` file:
-
-```bash
-# Edit /etc/hosts (requires sudo)
-sudo nano /etc/hosts
-
-# Add a line like this (replace with your actual MySQL hostname or IP):
-# 192.168.1.100  mysql-host
-# OR
-# mysql-server.example.com  mysql-host
-```
-
-**Note:** The `docker-compose.yml` uses `mysql-host` as the hostname. By adding it to `/etc/hosts`, Docker containers will resolve it to your actual MySQL server without needing to edit the compose file.
+**Note:** 
+- `MYSQL_HOST` should be the IP address or hostname of your MySQL server (IP recommended for Docker networks)
+- `MYSQL_MOAD_RO_PASSWORD` is for the `moad_ro` MySQL user (read-only access to schoolsoft and permissionMan databases)
 
 ## 4. Verify Log Paths
 

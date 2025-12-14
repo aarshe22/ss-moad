@@ -23,11 +23,14 @@
 Create `.env` file with:
 ```bash
 GRAFANA_ADMIN_PASSWORD=<secure_password>
+MYSQL_HOST=<mysql_server_ip_or_hostname>
 MYSQL_MOAD_RO_PASSWORD=<moad_ro_password>
 MYSQL_GRAFANA_PASSWORD=<grafana_readonly_password>
 ```
 
-**Note:** `MYSQL_MOAD_RO_PASSWORD` is for the `moad_ro` MySQL user which has:
+**Note:** 
+- `MYSQL_HOST` should be the IP address or hostname of your MySQL server (IP recommended for Docker networks)
+- `MYSQL_MOAD_RO_PASSWORD` is for the `moad_ro` MySQL user which has:
 - `SELECT ON schoolsoft.*`
 - `SELECT ON permissionMan.*`
 - `SELECT ON performance_schema.*`
@@ -48,7 +51,7 @@ Ensure `/data/moad/logs` is accessible:
 
 #### 3. MySQL Database Access
 - MySQL host accessible from `mysqld-exporter` container
-- Add `mysql-host` alias to Docker host `/etc/hosts` file (see deployment steps below)
+- `MYSQL_HOST` environment variable set in `.env` file (IP address or hostname)
 - MySQL user `moad_ro` exists with read-only permissions:
   - `SELECT ON schoolsoft.*`
   - `SELECT ON permissionMan.*`
@@ -78,20 +81,20 @@ cp .env.example .env
 # Edit .env with actual values
 ```
 
-### 3. Configure MySQL Host Alias
-Add `mysql-host` as an alias in your Docker host's `/etc/hosts` file:
+### 3. Configure MySQL Host
+Set `MYSQL_HOST` in your `.env` file:
 
 ```bash
-# Edit /etc/hosts (requires sudo)
-sudo nano /etc/hosts
+# Edit .env file
+nano .env
 
-# Add a line like this (replace with your actual MySQL hostname or IP):
-# 192.168.1.100  mysql-host
+# Add or update:
+MYSQL_HOST=192.168.1.100
 # OR if using a hostname:
-# mysql-server.example.com  mysql-host
+MYSQL_HOST=mysql-server.example.com
 ```
 
-**Note:** The `docker-compose.yml` uses `mysql-host` as the hostname. By adding it to `/etc/hosts`, Docker containers will resolve it to your actual MySQL server. This avoids needing to edit the compose file.
+**Note:** Using an IP address is recommended for reliability in Docker networks. The `docker-compose.yml` uses `${MYSQL_HOST}` from the `.env` file.
 
 ### 4. Verify Log Paths
 Check that log files exist:
@@ -181,7 +184,7 @@ cat data/vector/structured/*.jsonl | jq 'select(.mysql_joins != null)' | head -5
 
 ### MySQL Exporter
 - Requires MySQL host to be accessible from container network
-- Add `mysql-host` alias to Docker host `/etc/hosts` file (see deployment steps)
+- `MYSQL_HOST` environment variable must be set in `.env` file
 
 ## Troubleshooting
 

@@ -31,6 +31,8 @@ datasources:
   # MySQL - Direct database access (read-only, metrics only per non-goals)
   # Note: Per non-goals, we don't use direct MySQL queries from Grafana
   # This datasource is included for reference but should be used sparingly
+  # Note: MySQL host URL must be configured manually in Grafana UI using MYSQL_HOST from .env
+  # Grafana provisioning doesn't support environment variable substitution
   - name: MySQL
     type: mysql
     access: proxy

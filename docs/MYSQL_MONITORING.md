@@ -28,10 +28,10 @@ The MySQL exporter uses a read-only user `moad_ro` with the following access:
 
 Configured in `docker-compose.yml`:
 ```yaml
-DATA_SOURCE_NAME: "moad_ro:${MYSQL_MOAD_RO_PASSWORD}@(mysql-host:3306)/"
+DATA_SOURCE_NAME: "moad_ro:${MYSQL_MOAD_RO_PASSWORD}@tcp(${MYSQL_HOST}:3306)/"
 ```
 
-**Note:** Replace `mysql-host` with actual MySQL hostname/IP before deployment.
+**Note:** `MYSQL_HOST` must be set in `.env` file (IP address or hostname). Using an IP address is recommended for reliability in Docker networks.
 
 ## Performance Metrics
 

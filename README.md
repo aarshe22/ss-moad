@@ -122,25 +122,12 @@ Create a `.env` file:
 
 ```bash
 GRAFANA_ADMIN_PASSWORD=your_secure_password
+MYSQL_HOST=192.168.1.100
 MYSQL_MOAD_RO_PASSWORD=your_moad_ro_password
 MYSQL_GRAFANA_PASSWORD=your_grafana_readonly_password
 ```
 
-### Configure MySQL Host Alias
-
-Add `mysql-host` as an alias in your Docker host's `/etc/hosts` file:
-
-```bash
-# Edit /etc/hosts (requires sudo)
-sudo nano /etc/hosts
-
-# Add a line like this (replace with your actual MySQL hostname or IP):
-# 192.168.1.100  mysql-host
-# OR if using a hostname:
-# mysql-server.example.com  mysql-host
-```
-
-**Note:** The `docker-compose.yml` uses `mysql-host` as the hostname. By adding it to `/etc/hosts`, Docker containers will resolve it to your actual MySQL server without needing to edit the compose file.
+**Note:** `MYSQL_HOST` should be the IP address or hostname of your MySQL server. Using an IP address is recommended for reliability in Docker networks.
 
 ### Start Services
 
@@ -154,6 +141,10 @@ docker compose up -d
   - Default credentials: `admin` / (from `.env`)
 - Prometheus: http://dev1.schoolsoft.net:9090
 - Loki: http://dev1.schoolsoft.net:3100
+
+## Scripts
+
+- `docker-reset.sh`: Complete Docker cleanup script (removes all containers, volumes, networks, images)
 
 ## Configuration Files
 
