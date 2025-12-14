@@ -1,6 +1,7 @@
 #!/bin/bash
 # moad-manager.sh - Comprehensive MOAD stack management interface
 # Provides dialog-based interface for all MOAD operations
+# MOAD Version: 0.9
 
 # Don't exit on error - return to main menu instead
 set +e

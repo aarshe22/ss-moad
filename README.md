@@ -1,5 +1,7 @@
 # MOAD - Mother Of All Dashboards
 
+**Version 0.9** - Initial deployment milestone achieved: All containers running, MOAD Manager operational.
+
 A unified observability and analytics platform for SchoolSoft operations, providing a single source of truth across logs, metrics, and relational data.
 
 ## Core Mission

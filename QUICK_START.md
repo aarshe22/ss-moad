@@ -1,5 +1,7 @@
 # MOAD Quick Start Guide
 
+**MOAD Version 0.9**
+
 ## Prerequisites
 
 1. Docker and Docker Compose installed
