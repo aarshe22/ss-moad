@@ -77,12 +77,16 @@ transforms:
       .timestamp = parse_timestamp!(.message, format: "%Y-%m-%d %H:%M:%S") ?? now()
       
       # Extract log level
-      .level = match(.message) {
-        r'ERROR' => "error",
-        r'WARN' => "warn",
-        r'INFO' => "info",
-        r'DEBUG' => "debug",
-        _ => "unknown"
+      if match(.message, r'ERROR') {
+        .level = "error"
+      } else if match(.message, r'WARN') {
+        .level = "warn"
+      } else if match(.message, r'INFO') {
+        .level = "info"
+      } else if match(.message, r'DEBUG') {
+        .level = "debug"
+      } else {
+        .level = "unknown"
       }
       
       # Event type classification
@@ -240,12 +244,17 @@ transforms:
     source: |
       # Same parsing logic as CM
       .timestamp = parse_timestamp!(.message, format: "%Y-%m-%d %H:%M:%S") ?? now()
-      .level = match(.message) {
-        r'ERROR' => "error",
-        r'WARN' => "warn",
-        r'INFO' => "info",
-        r'DEBUG' => "debug",
-        _ => "unknown"
+      # Extract log level
+      if match(.message, r'ERROR') {
+        .level = "error"
+      } else if match(.message, r'WARN') {
+        .level = "warn"
+      } else if match(.message, r'INFO') {
+        .level = "info"
+      } else if match(.message, r'DEBUG') {
+        .level = "debug"
+      } else {
+        .level = "unknown"
       }
       .event_type = "unknown"
       .event_category = "application"
@@ -668,6 +677,6 @@ sinks:
     compression: gzip
     buffer:
       type: disk
-      max_size: 104857600  # 100MB
+      max_size: 268435456  # 256MB (minimum required)
       when_full: block
 

@@ -22,8 +22,9 @@ if [ -z "$MYSQL_HOST" ]; then
     exit 1
 fi
 
-# Create .my.cnf file in home directory (mysqld-exporter looks for ~/.my.cnf)
-MY_CNF_FILE="${HOME:-/root}/.my.cnf"
+# Create .my.cnf file in root's home directory (mysqld-exporter looks for ~/.my.cnf)
+# Explicitly use /root since container runs as root and HOME might not be set
+MY_CNF_FILE="/root/.my.cnf"
 
 # Write .my.cnf file with MySQL credentials
 cat > "$MY_CNF_FILE" <<EOF
