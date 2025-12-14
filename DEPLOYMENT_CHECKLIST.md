@@ -26,6 +26,13 @@ sudo apt-get install -y dialog jq
 - [x] `grafana/provisioning/datasources/datasources.yml` - Grafana datasources
 - [x] `grafana/provisioning/dashboards/dashboards.yml` - Dashboard provisioning
 - [x] `grafana/dashboards/` - Dashboard JSON files (4 dashboards)
+- [x] `*-entrypoint.sh` - Entrypoint scripts for all containers (5 scripts)
+  - `vector-entrypoint.sh` - Validates Vector config and log paths
+  - `loki-entrypoint.sh` - Validates Loki config file
+  - `prometheus-entrypoint.sh` - Validates Prometheus config file
+  - `mysqld-exporter-entrypoint.sh` - Creates `.my.cnf` from environment variables
+  - `grafana-entrypoint.sh` - Validates environment variables and provisioning paths
+- [x] `moad-manager.sh` - MOAD stack management interface
 - [x] `README.md` - Project documentation
 - [x] `QUICK_START.md` - Quick deployment guide
 - [x] `DEPLOYMENT_CHECKLIST.md` - Comprehensive deployment checklist
@@ -144,7 +151,17 @@ docker compose ps
 # All services should show "Up"
 ```
 
-### 7. Check Logs
+### 7. Verify Entrypoint Scripts
+All containers use entrypoint scripts for validation:
+- Vector: Validates config file and log directory accessibility
+- Loki: Validates config file exists and is readable
+- Prometheus: Validates config file exists and is readable
+- MySQL Exporter: Creates `.my.cnf` in `/tmp` from environment variables
+- Grafana: Validates environment variables and provisioning paths
+
+If containers fail to start, check entrypoint script output in logs.
+
+### 8. Check Logs
 ```bash
 # Vector logs
 docker logs moad-vector
@@ -155,11 +172,14 @@ docker logs moad-loki
 # Prometheus logs
 docker logs moad-prometheus
 
+# MySQL Exporter logs (check for .my.cnf creation)
+docker logs moad-mysqld-exporter
+
 # Grafana logs
 docker logs moad-grafana
 ```
 
-### 8. Access Services
+### 9. Access Services
 - Grafana: http://dev1.schoolsoft.net:3000 (admin / password from .env)
 - Prometheus: http://dev1.schoolsoft.net:9090
 - Loki: http://dev1.schoolsoft.net:3100

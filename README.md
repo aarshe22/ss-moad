@@ -15,10 +15,16 @@ A unified observability and analytics platform for SchoolSoft operations, provid
 ### Components
 
 - **Vector**: Log ingestion, multiline reconstruction, field extraction, event classification, JSON normalization
+  - Entrypoint script validates configuration and log paths before starting
 - **Loki**: Log aggregation and storage
+  - Entrypoint script validates configuration file before starting
 - **Prometheus**: Metrics collection
+  - Entrypoint script validates configuration file before starting
 - **MySQL Exporter**: Database metrics for `schoolsoft` and `permissionMan` databases (critical for correlation)
+  - Entrypoint script creates `.my.cnf` from environment variables at runtime
+  - Uses `/tmp/.my.cnf` (writable by container's `nobody` user)
 - **Grafana**: Visualization and dashboards
+  - Entrypoint script validates environment variables and provisioning paths
 
 ### Deployment
 
@@ -264,6 +270,18 @@ The script will:
 - `prometheus/prometheus.yml`: Metrics collection
 - `grafana/provisioning/`: Grafana datasources and dashboards
 - `data/vector/structured/`: Structured logs output directory (local, git-ignored)
+
+## Entrypoint Scripts
+
+All containers use custom entrypoint scripts for reliability and validation:
+
+- `vector-entrypoint.sh`: Validates Vector config and log directory accessibility
+- `loki-entrypoint.sh`: Validates Loki config file exists and is readable
+- `prometheus-entrypoint.sh`: Validates Prometheus config file exists and is readable
+- `mysqld-exporter-entrypoint.sh`: Creates `.my.cnf` from environment variables at runtime
+- `grafana-entrypoint.sh`: Validates environment variables and provisioning paths
+
+These scripts ensure containers fail fast with clear error messages if configuration is invalid.
 
 ## Documentation
 

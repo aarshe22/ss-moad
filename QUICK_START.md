@@ -163,6 +163,7 @@ docker compose restart
 1. Verify log file paths exist and are readable
 2. Check Vector logs: `docker logs moad-vector`
 3. Verify file permissions on `/data/moad/logs`
+4. Check Vector entrypoint validation: Entrypoint script validates config and log paths before starting
 
 ### No Data in Grafana
 1. Verify Loki is receiving logs: `docker logs moad-loki`
@@ -173,6 +174,8 @@ docker compose restart
 1. Verify MySQL exporter can connect: `docker logs moad-mysqld-exporter`
 2. Check Prometheus targets: http://localhost:9090/targets
 3. Verify MySQL host is accessible from container network
+4. Check entrypoint script output: Should show "Created .my.cnf file at: /tmp/.my.cnf"
+5. Verify environment variables are set: `docker exec moad-mysqld-exporter env | grep MYSQL`
 
 ## Backup and Restore
 
