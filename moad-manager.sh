@@ -118,6 +118,40 @@ fi
 # UTILITY FUNCTIONS
 # ============================================================================
 
+# Error log file
+ERROR_LOG="${ERROR_LOG:-moad-manager-errors.log}"
+
+# Function to log errors
+log_error() {
+    local operation=$1
+    local error_msg=$2
+    local container=${3:-""}
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    
+    if [ -n "$container" ]; then
+        echo "[$timestamp] [CONTAINER:$container] [OPERATION:$operation] $error_msg" >> "$ERROR_LOG"
+    else
+        echo "[$timestamp] [OPERATION:$operation] $error_msg" >> "$ERROR_LOG"
+    fi
+}
+
+# Function to log command errors (captures stderr and exit codes)
+log_command_error() {
+    local operation=$1
+    local command=$2
+    local container=${3:-""}
+    local exit_code=$4
+    local stderr_output=${5:-""}
+    
+    if [ $exit_code -ne 0 ]; then
+        local error_msg="Command failed (exit code: $exit_code): $command"
+        if [ -n "$stderr_output" ]; then
+            error_msg="$error_msg | Error: $stderr_output"
+        fi
+        log_error "$operation" "$error_msg" "$container"
+    fi
+}
+
 # Function to generate random password (14 characters: uppercase, lowercase, numbers)
 generate_password() {
     tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 14
@@ -133,24 +167,76 @@ read_env_value() {
     fi
 }
 
-# Function to get MOAD containers
+# Function to get MOAD containers (always fresh from docker)
 get_moad_containers() {
-    docker compose ps --format "{{.Name}}" 2>/dev/null | grep "^moad-" || echo ""
+    local containers
+    local stderr_output
+    stderr_output=$(docker compose ps --format "{{.Name}}" 2>&1 >/dev/null)
+    containers=$(docker compose ps --format "{{.Name}}" 2>/dev/null | grep "^moad-" || echo "")
+    
+    if [ -n "$stderr_output" ] && echo "$stderr_output" | grep -qi "error\|failed"; then
+        log_error "get_moad_containers" "$stderr_output"
+    fi
+    
+    echo "$containers"
 }
 
-# Function to get all containers (running and stopped)
+# Function to get all containers (running and stopped) - always fresh
 get_all_containers() {
-    docker compose ps -a --format "{{.Name}}" 2>/dev/null || echo ""
+    local containers
+    local stderr_output
+    stderr_output=$(docker compose ps -a --format "{{.Name}}" 2>&1 >/dev/null)
+    containers=$(docker compose ps -a --format "{{.Name}}" 2>/dev/null || echo "")
+    
+    if [ -n "$stderr_output" ] && echo "$stderr_output" | grep -qi "error\|failed"; then
+        log_error "get_all_containers" "$stderr_output"
+    fi
+    
+    echo "$containers"
 }
 
-# Function to get running containers
+# Function to get running containers - always fresh
 get_running_containers() {
-    docker compose ps --format "{{.Name}}" --filter "status=running" 2>/dev/null || echo ""
+    local containers
+    local stderr_output
+    stderr_output=$(docker compose ps --format "{{.Name}}" --filter "status=running" 2>&1 >/dev/null)
+    containers=$(docker compose ps --format "{{.Name}}" --filter "status=running" 2>/dev/null || echo "")
+    
+    if [ -n "$stderr_output" ] && echo "$stderr_output" | grep -qi "error\|failed"; then
+        log_error "get_running_containers" "$stderr_output"
+    fi
+    
+    echo "$containers"
 }
 
-# Function to get stopped containers
+# Function to get stopped containers - always fresh
 get_stopped_containers() {
-    docker compose ps --format "{{.Name}}" --filter "status=stopped" 2>/dev/null || echo ""
+    local containers
+    local stderr_output
+    stderr_output=$(docker compose ps --format "{{.Name}}" --filter "status=stopped" 2>&1 >/dev/null)
+    containers=$(docker compose ps --format "{{.Name}}" --filter "status=stopped" 2>/dev/null || echo "")
+    
+    if [ -n "$stderr_output" ] && echo "$stderr_output" | grep -qi "error\|failed"; then
+        log_error "get_stopped_containers" "$stderr_output"
+    fi
+    
+    echo "$containers"
+}
+
+# Function to get container status from docker (always fresh)
+get_container_status_from_docker() {
+    local container=$1
+    local status
+    local stderr_output
+    
+    stderr_output=$(docker inspect --format='{{.State.Status}}' "$container" 2>&1 >/dev/null)
+    status=$(docker inspect --format='{{.State.Status}}' "$container" 2>/dev/null || echo "unknown")
+    
+    if [ -n "$stderr_output" ] && echo "$stderr_output" | grep -qi "error\|failed"; then
+        log_error "get_container_status_from_docker" "$stderr_output" "$container"
+    fi
+    
+    echo "$status"
 }
 
 # ============================================================================
@@ -316,6 +402,7 @@ show_container_status() {
 }
 
 stop_all_containers() {
+    # Always get fresh container list
     local running
     running=$(get_running_containers)
     
@@ -324,42 +411,60 @@ stop_all_containers() {
         return
     fi
     
+    # Convert to array
+    local containers=()
+    while IFS= read -r line; do
+        [ -n "$line" ] && containers+=("$line")
+    done <<< "$running"
+    
+    local total=${#containers[@]}
+    
     dialog --stdout --yesno "Stop all MOAD containers?\n\nRunning containers:\n$running" 12 60 2>&1 >/dev/null
     if [ $? -eq 0 ]; then
-        local result=1
-        {
-            echo "XXX"
-            echo "0"
-            echo "Stopping containers..."
-            echo "XXX"
-            sleep 1
-            
-            echo "XXX"
-            echo "50"
-            echo "Stopping containers..."
-            echo "XXX"
-            
-            docker compose stop >/dev/null 2>&1
-            result=$?
-            
-            if [ $result -eq 0 ]; then
-                echo "XXX"
-                echo "100"
-                echo "✓ All containers stopped successfully!"
-                echo "XXX"
-            else
-                echo "XXX"
-                echo "100"
-                echo "✗ Failed to stop containers"
-                echo "XXX"
-            fi
-            sleep 1
-        } | dialog --colors --gauge "Stopping containers..." 8 60 0
+        local failed_containers=()
+        local success_count=0
+        local fail_count=0
         
-        if [ $result -eq 0 ]; then
-            dialog --stdout --msgbox "All containers stopped successfully." 8 50 2>&1 >/dev/null
+        # Process each container with individual progress
+        for i in "${!containers[@]}"; do
+            local container="${containers[$i]}"
+            local container_num=$((i + 1))
+            local percent=$((container_num * 100 / total))
+            local display_name=$(echo "$container" | sed 's/^moad-//')
+            
+            {
+                echo "XXX"
+                echo "$percent"
+                echo "Stopping $display_name ($container_num/$total)..."
+                echo "XXX"
+                
+                local stderr_output
+                stderr_output=$(docker compose stop "$container" 2>&1)
+                local result=$?
+                
+                if [ $result -eq 0 ]; then
+                    success_count=$((success_count + 1))
+                    echo "XXX"
+                    echo "$percent"
+                    echo "✓ $display_name stopped"
+                    echo "XXX"
+                else
+                    fail_count=$((fail_count + 1))
+                    failed_containers+=("$container")
+                    log_command_error "stop_all_containers" "docker compose stop $container" "$container" "$result" "$stderr_output"
+                    echo "XXX"
+                    echo "$percent"
+                    echo "✗ $display_name failed"
+                    echo "XXX"
+                fi
+            } | dialog --colors --gauge "Stopping containers... ($container_num/$total)" 8 60 0
+        done
+        
+        if [ $fail_count -eq 0 ]; then
+            dialog --stdout --msgbox "All containers stopped successfully.\n\nStopped: $success_count container(s)" 10 50 2>&1 >/dev/null
         else
-            dialog --stdout --msgbox "Error: Failed to stop containers." 8 50 2>&1 >/dev/null
+            local error_msg="Some containers failed to stop.\n\nStopped: $success_count\nFailed: $fail_count\n\nFailed containers:\n$(printf '%s\n' "${failed_containers[@]}")"
+            dialog --stdout --msgbox "$error_msg" 15 60 2>&1 >/dev/null
         fi
     fi
 }
@@ -387,7 +492,8 @@ start_all_containers() {
                 echo "Starting containers..."
                 echo "XXX"
                 
-                docker compose up -d >/dev/null 2>&1
+                local stderr_output
+                stderr_output=$(docker compose up -d 2>&1)
                 result=$?
                 
                 if [ $result -eq 0 ]; then
@@ -396,6 +502,7 @@ start_all_containers() {
                     echo "✓ All containers created and started successfully!"
                     echo "XXX"
                 else
+                    log_command_error "start_all_containers" "docker compose up -d" "" "$result" "$stderr_output"
                     echo "XXX"
                     echo "100"
                     echo "✗ Failed to create/start containers"
@@ -405,9 +512,46 @@ start_all_containers() {
             } | dialog --colors --gauge "Creating and starting containers..." 8 60 0
             
             if [ $result -eq 0 ]; then
-                dialog --stdout --msgbox "All containers created and started successfully." 8 50 2>&1 >/dev/null
+                # Get fresh list and verify
+                sleep 2
+                local created_containers
+                created_containers=$(get_all_containers)
+                
+                local containers=()
+                while IFS= read -r line; do
+                    [ -n "$line" ] && containers+=("$line")
+                done <<< "$created_containers"
+                
+                local total=${#containers[@]}
+                local success_count=0
+                local fail_count=0
+                local failed_containers=()
+                
+                for i in "${!containers[@]}"; do
+                    local container="${containers[$i]}"
+                    local container_num=$((i + 1))
+                    local percent=$((container_num * 100 / total))
+                    local display_name=$(echo "$container" | sed 's/^moad-//')
+                    local status
+                    status=$(get_container_status_from_docker "$container")
+                    
+                    if [ "$status" = "running" ]; then
+                        success_count=$((success_count + 1))
+                    else
+                        fail_count=$((fail_count + 1))
+                        failed_containers+=("$container")
+                        log_error "start_all_containers" "Container $container status: $status" "$container"
+                    fi
+                done
+                
+                if [ $fail_count -eq 0 ]; then
+                    dialog --stdout --msgbox "All containers created and started successfully.\n\nStarted: $success_count container(s)" 10 50 2>&1 >/dev/null
+                else
+                    local error_msg="Some containers failed to start.\n\nStarted: $success_count\nFailed: $fail_count\n\nFailed containers:\n$(printf '%s\n' "${failed_containers[@]}")"
+                    dialog --stdout --msgbox "$error_msg" 15 60 2>&1 >/dev/null
+                fi
             else
-                dialog --stdout --msgbox "Error: Failed to create/start containers.\n\nCheck logs for details." 10 50 2>&1 >/dev/null
+                dialog --stdout --msgbox "Error: Failed to create/start containers.\n\nCheck error log for details." 10 50 2>&1 >/dev/null
             fi
         fi
         return
@@ -419,49 +563,68 @@ start_all_containers() {
         return
     fi
     
+    # Convert to array
+    local containers=()
+    while IFS= read -r line; do
+        [ -n "$line" ] && containers+=("$line")
+    done <<< "$stopped"
+    
+    local total=${#containers[@]}
+    
     # Start stopped containers
     dialog --stdout --yesno "Start all stopped MOAD containers?\n\nStopped containers:\n$stopped" 12 60 2>&1 >/dev/null
     if [ $? -eq 0 ]; then
-        local result=1
-        {
-            echo "XXX"
-            echo "0"
-            echo "Starting containers..."
-            echo "XXX"
-            sleep 1
-            
-            echo "XXX"
-            echo "50"
-            echo "Starting containers..."
-            echo "XXX"
-            
-            docker compose start >/dev/null 2>&1
-            result=$?
-            
-            if [ $result -eq 0 ]; then
-                echo "XXX"
-                echo "100"
-                echo "✓ All containers started successfully!"
-                echo "XXX"
-            else
-                echo "XXX"
-                echo "100"
-                echo "✗ Failed to start containers"
-                echo "XXX"
-            fi
-            sleep 1
-        } | dialog --colors --gauge "Starting containers..." 8 60 0
+        local failed_containers=()
+        local success_count=0
+        local fail_count=0
         
-        if [ $result -eq 0 ]; then
-            dialog --stdout --msgbox "All containers started successfully." 8 50 2>&1 >/dev/null
+        # Process each container with individual progress
+        for i in "${!containers[@]}"; do
+            local container="${containers[$i]}"
+            local container_num=$((i + 1))
+            local percent=$((container_num * 100 / total))
+            local display_name=$(echo "$container" | sed 's/^moad-//')
+            
+            {
+                echo "XXX"
+                echo "$percent"
+                echo "Starting $display_name ($container_num/$total)..."
+                echo "XXX"
+                
+                local stderr_output
+                stderr_output=$(docker compose start "$container" 2>&1)
+                local result=$?
+                
+                if [ $result -eq 0 ]; then
+                    success_count=$((success_count + 1))
+                    echo "XXX"
+                    echo "$percent"
+                    echo "✓ $display_name started"
+                    echo "XXX"
+                else
+                    fail_count=$((fail_count + 1))
+                    failed_containers+=("$container")
+                    log_command_error "start_all_containers" "docker compose start $container" "$container" "$result" "$stderr_output"
+                    echo "XXX"
+                    echo "$percent"
+                    echo "✗ $display_name failed"
+                    echo "XXX"
+                fi
+            } | dialog --colors --gauge "Starting containers... ($container_num/$total)" 8 60 0
+        done
+        
+        if [ $fail_count -eq 0 ]; then
+            dialog --stdout --msgbox "All containers started successfully.\n\nStarted: $success_count container(s)" 10 50 2>&1 >/dev/null
         else
-            dialog --stdout --msgbox "Error: Failed to start containers." 8 50 2>&1 >/dev/null
+            local error_msg="Some containers failed to start.\n\nStarted: $success_count\nFailed: $fail_count\n\nFailed containers:\n$(printf '%s\n' "${failed_containers[@]}")"
+            dialog --stdout --msgbox "$error_msg" 15 60 2>&1 >/dev/null
         fi
     fi
 }
 
 # Function to create and start containers (build if needed)
 create_and_start_containers() {
+    # Always get fresh container list
     local all_containers
     all_containers=$(get_all_containers)
     
@@ -474,51 +637,75 @@ create_and_start_containers() {
     
     dialog --stdout --yesno "Create and start all MOAD containers?\n\nThis will:\n- Create containers from images\n- Start all services\n- Build if needed" 12 60 2>&1 >/dev/null
     if [ $? -eq 0 ]; then
-        local result=1
-        {
-            echo "XXX"
-            echo "0"
-            echo "Building images (if needed)..."
-            echo "XXX"
-            sleep 1
-            
-            echo "XXX"
-            echo "30"
-            echo "Creating containers..."
-            echo "XXX"
-            sleep 1
-            
-            echo "XXX"
-            echo "60"
-            echo "Starting containers..."
-            echo "XXX"
-            
-            docker compose up -d --build >/dev/null 2>&1
-            result=$?
-            
-            if [ $result -eq 0 ]; then
-                echo "XXX"
-                echo "100"
-                echo "✓ All containers created and started successfully!"
-                echo "XXX"
-            else
-                echo "XXX"
-                echo "100"
-                echo "✗ Failed to create/start containers"
-                echo "XXX"
-            fi
-            sleep 1
-        } | dialog --colors --gauge "Creating and starting containers..." 8 60 0
+        local stderr_output
+        stderr_output=$(docker compose up -d --build 2>&1)
+        local result=$?
         
         if [ $result -eq 0 ]; then
-            dialog --stdout --msgbox "All containers created and started successfully." 8 50 2>&1 >/dev/null
+            # Get fresh list of created containers and show per-container status
+            sleep 2
+            local created_containers
+            created_containers=$(get_all_containers)
+            
+            local containers=()
+            while IFS= read -r line; do
+                [ -n "$line" ] && containers+=("$line")
+            done <<< "$created_containers"
+            
+            local total=${#containers[@]}
+            local success_count=0
+            local fail_count=0
+            local failed_containers=()
+            
+            # Check each container status
+            for i in "${!containers[@]}"; do
+                local container="${containers[$i]}"
+                local container_num=$((i + 1))
+                local percent=$((container_num * 100 / total))
+                local display_name=$(echo "$container" | sed 's/^moad-//')
+                local status
+                status=$(get_container_status_from_docker "$container")
+                
+                {
+                    echo "XXX"
+                    echo "$percent"
+                    echo "Checking $display_name ($container_num/$total)..."
+                    echo "XXX"
+                    sleep 0.3
+                    
+                    if [ "$status" = "running" ]; then
+                        success_count=$((success_count + 1))
+                        echo "XXX"
+                        echo "$percent"
+                        echo "✓ $display_name running"
+                        echo "XXX"
+                    else
+                        fail_count=$((fail_count + 1))
+                        failed_containers+=("$container")
+                        log_error "create_and_start_containers" "Container $container status: $status" "$container"
+                        echo "XXX"
+                        echo "$percent"
+                        echo "✗ $display_name $status"
+                        echo "XXX"
+                    fi
+                } | dialog --colors --gauge "Verifying containers... ($container_num/$total)" 8 60 0
+            done
+            
+            if [ $fail_count -eq 0 ]; then
+                dialog --stdout --msgbox "All containers created and started successfully.\n\nStarted: $success_count container(s)" 10 50 2>&1 >/dev/null
+            else
+                local error_msg="Some containers failed to start.\n\nStarted: $success_count\nFailed: $fail_count\n\nFailed containers:\n$(printf '%s\n' "${failed_containers[@]}")"
+                dialog --stdout --msgbox "$error_msg" 15 60 2>&1 >/dev/null
+            fi
         else
-            dialog --stdout --msgbox "Error: Failed to create/start containers.\n\nCheck logs for details." 10 50 2>&1 >/dev/null
+            log_command_error "create_and_start_containers" "docker compose up -d --build" "" "$result" "$stderr_output"
+            dialog --stdout --msgbox "Error: Failed to create/start containers.\n\nCheck error log for details." 10 50 2>&1 >/dev/null
         fi
     fi
 }
 
 restart_all_containers() {
+    # Always get fresh container list
     local all_containers
     all_containers=$(get_all_containers)
     
@@ -527,42 +714,60 @@ restart_all_containers() {
         return
     fi
     
+    # Convert to array
+    local containers=()
+    while IFS= read -r line; do
+        [ -n "$line" ] && containers+=("$line")
+    done <<< "$all_containers"
+    
+    local total=${#containers[@]}
+    
     dialog --stdout --yesno "Restart all MOAD containers?\n\nContainers:\n$all_containers" 12 60 2>&1 >/dev/null
     if [ $? -eq 0 ]; then
-        local result=1
-        {
-            echo "XXX"
-            echo "0"
-            echo "Stopping containers..."
-            echo "XXX"
-            sleep 1
-            
-            echo "XXX"
-            echo "50"
-            echo "Starting containers..."
-            echo "XXX"
-            
-            docker compose restart >/dev/null 2>&1
-            result=$?
-            
-            if [ $result -eq 0 ]; then
-                echo "XXX"
-                echo "100"
-                echo "✓ All containers restarted successfully!"
-                echo "XXX"
-            else
-                echo "XXX"
-                echo "100"
-                echo "✗ Failed to restart containers"
-                echo "XXX"
-            fi
-            sleep 1
-        } | dialog --colors --gauge "Restarting containers..." 8 60 0
+        local failed_containers=()
+        local success_count=0
+        local fail_count=0
         
-        if [ $result -eq 0 ]; then
-            dialog --stdout --msgbox "All containers restarted successfully." 8 50 2>&1 >/dev/null
+        # Process each container with individual progress
+        for i in "${!containers[@]}"; do
+            local container="${containers[$i]}"
+            local container_num=$((i + 1))
+            local percent=$((container_num * 100 / total))
+            local display_name=$(echo "$container" | sed 's/^moad-//')
+            
+            {
+                echo "XXX"
+                echo "$percent"
+                echo "Restarting $display_name ($container_num/$total)..."
+                echo "XXX"
+                
+                local stderr_output
+                stderr_output=$(docker compose restart "$container" 2>&1)
+                local result=$?
+                
+                if [ $result -eq 0 ]; then
+                    success_count=$((success_count + 1))
+                    echo "XXX"
+                    echo "$percent"
+                    echo "✓ $display_name restarted"
+                    echo "XXX"
+                else
+                    fail_count=$((fail_count + 1))
+                    failed_containers+=("$container")
+                    log_command_error "restart_all_containers" "docker compose restart $container" "$container" "$result" "$stderr_output"
+                    echo "XXX"
+                    echo "$percent"
+                    echo "✗ $display_name failed"
+                    echo "XXX"
+                fi
+            } | dialog --colors --gauge "Restarting containers... ($container_num/$total)" 8 60 0
+        done
+        
+        if [ $fail_count -eq 0 ]; then
+            dialog --stdout --msgbox "All containers restarted successfully.\n\nRestarted: $success_count container(s)" 10 50 2>&1 >/dev/null
         else
-            dialog --stdout --msgbox "Error: Failed to restart containers." 8 50 2>&1 >/dev/null
+            local error_msg="Some containers failed to restart.\n\nRestarted: $success_count\nFailed: $fail_count\n\nFailed containers:\n$(printf '%s\n' "${failed_containers[@]}")"
+            dialog --stdout --msgbox "$error_msg" 15 60 2>&1 >/dev/null
         fi
     fi
 }
@@ -607,10 +812,15 @@ restart_individual_container() {
     dialog --stdout --yesno "Restart container: $selected?" 8 50 2>&1 >/dev/null
     if [ $? -eq 0 ]; then
         dialog --stdout --infobox "Restarting $selected..." 5 50 2>&1 >/dev/null
-        if docker compose restart "$selected" >/dev/null 2>&1; then
+        local stderr_output
+        stderr_output=$(docker compose restart "$selected" 2>&1)
+        local result=$?
+        
+        if [ $result -eq 0 ]; then
             dialog --stdout --msgbox "Container $selected restarted successfully." 8 50 2>&1 >/dev/null
         else
-            dialog --stdout --msgbox "Error: Failed to restart $selected." 8 50 2>&1 >/dev/null
+            log_command_error "restart_individual_container" "docker compose restart $selected" "$selected" "$result" "$stderr_output"
+            dialog --stdout --msgbox "Error: Failed to restart $selected.\n\nCheck error log for details." 10 50 2>&1 >/dev/null
         fi
     fi
 }
@@ -664,7 +874,13 @@ view_container_logs() {
     
     dialog --stdout --infobox "Fetching logs for $selected..." 5 50 2>&1 >/dev/null
     local logs
+    local stderr_output
     logs=$(docker compose logs --tail="$lines" "$selected" 2>&1)
+    local result=$?
+    
+    if [ $result -ne 0 ]; then
+        log_command_error "view_container_logs" "docker compose logs --tail=$lines $selected" "$selected" "$result" "$logs"
+    fi
     
     if [ -z "$logs" ]; then
         logs="No logs available for $selected"
@@ -674,34 +890,66 @@ view_container_logs() {
 }
 
 view_recent_errors() {
-    local containers
-    local menu_items=()
     local all_errors=""
+    local has_errors=false
     
+    # Show MOAD Manager error log
+    if [ -f "$ERROR_LOG" ]; then
+        local manager_errors
+        manager_errors=$(tail -50 "$ERROR_LOG" 2>/dev/null)
+        if [ -n "$manager_errors" ]; then
+            all_errors+="=== MOAD Manager Error Log (last 50 lines) ===\n"
+            all_errors+="$manager_errors\n\n"
+            has_errors=true
+        fi
+    fi
+    
+    # Get fresh container list
+    local containers
     containers=$(get_all_containers)
     
-    if [ -z "$containers" ]; then
-        dialog --stdout --msgbox "No containers found." 8 50 2>&1 >/dev/null
-        return
-    fi
-    
-    dialog --stdout --infobox "Scanning logs for errors..." 5 50 2>&1 >/dev/null
-    
-    while IFS= read -r container; do
-        if [ -n "$container" ]; then
-            local errors
-            errors=$(docker compose logs --tail=50 "$container" 2>&1 | grep -i "error\|fatal\|exception\|failed" | head -10)
-            if [ -n "$errors" ]; then
-                all_errors+="\n=== $container ===\n$errors\n"
+    if [ -n "$containers" ]; then
+        dialog --stdout --infobox "Scanning container logs for errors..." 5 50 2>&1 >/dev/null
+        
+        local container_error_count=0
+        while IFS= read -r container; do
+            if [ -n "$container" ]; then
+                # Check container status for errors
+                local status
+                status=$(get_container_status_from_docker "$container")
+                
+                # Check if container is unhealthy or exited
+                if [ "$status" != "running" ] && [ "$status" != "not_found" ]; then
+                    if [ $container_error_count -eq 0 ]; then
+                        all_errors+="=== Container Status Errors ===\n"
+                    fi
+                    all_errors+="\n$container: Status=$status\n"
+                    container_error_count=$((container_error_count + 1))
+                    has_errors=true
+                fi
+                
+                # Check container logs for error patterns
+                local log_errors
+                log_errors=$(docker compose logs --tail=20 "$container" 2>&1 | grep -iE "error|fatal|exception|failed|panic|crash" | head -5)
+                if [ -n "$log_errors" ]; then
+                    if [ $container_error_count -eq 0 ]; then
+                        all_errors+="=== Container Log Errors ===\n"
+                    fi
+                    all_errors+="\n--- $container ---\n$log_errors\n"
+                    container_error_count=$((container_error_count + 1))
+                    has_errors=true
+                fi
             fi
-        fi
-    done <<< "$containers"
-    
-    if [ -z "$all_errors" ]; then
-        all_errors="No recent errors found in container logs."
+        done <<< "$containers"
     fi
     
-    dialog --stdout --title "Recent Errors in Logs" --msgbox "$all_errors" 25 80 2>&1 >/dev/null
+    if [ "$has_errors" = "false" ]; then
+        all_errors="No recent errors found.\n\n- MOAD Manager error log: $ERROR_LOG\n- Container logs: No errors detected"
+    else
+        all_errors+="\n\nNote: For detailed container logs, use 'View Container Logs' option."
+    fi
+    
+    dialog --stdout --title "Recent Errors" --msgbox "$all_errors" 30 90 2>&1 >/dev/null
 }
 
 pull_latest_images() {
@@ -1284,7 +1532,8 @@ generate_status_bar() {
         local health
         local display_name
         
-        status=$(get_container_status "$container")
+        # Always get fresh status from docker
+        status=$(get_container_status_from_docker "$container")
         health=$(get_container_health "$container")
         
         # Get short name (remove moad- prefix)
