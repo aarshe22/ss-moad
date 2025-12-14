@@ -512,40 +512,59 @@ start_all_containers() {
             } | dialog --colors --gauge "Creating and starting containers..." 8 60 0
             
             if [ $result -eq 0 ]; then
-                # Get fresh list and verify
-                sleep 2
-                local created_containers
-                created_containers=$(get_all_containers)
-                
-                local containers=()
-                while IFS= read -r line; do
-                    [ -n "$line" ] && containers+=("$line")
-                done <<< "$created_containers"
-                
-                local total=${#containers[@]}
+                # Wait for containers to start, then verify using expected container names
+                sleep 3
+                local expected_containers=("moad-vector" "moad-loki" "moad-prometheus" "moad-mysqld-exporter" "moad-grafana")
+                local total=${#expected_containers[@]}
                 local success_count=0
                 local fail_count=0
                 local failed_containers=()
                 
-                for i in "${!containers[@]}"; do
-                    local container="${containers[$i]}"
-                    local container_num=$((i + 1))
-                    local percent=$((container_num * 100 / total))
-                    local display_name=$(echo "$container" | sed 's/^moad-//')
-                    local status
-                    status=$(get_container_status_from_docker "$container")
+                {
+                    for i in "${!expected_containers[@]}"; do
+                        local container="${expected_containers[$i]}"
+                        local container_num=$((i + 1))
+                        local percent=$((container_num * 100 / total))
+                        local display_name=$(echo "$container" | sed 's/^moad-//')
+                        local status
+                        status=$(get_container_status_from_docker "$container")
+                        
+                        echo "XXX"
+                        echo "$percent"
+                        echo "Checking $display_name ($container_num/$total)..."
+                        echo "XXX"
+                        sleep 0.3
+                        
+                        if [ "$status" = "running" ]; then
+                            success_count=$((success_count + 1))
+                            echo "XXX"
+                            echo "$percent"
+                            echo "✓ $display_name: running"
+                            echo "XXX"
+                        else
+                            fail_count=$((fail_count + 1))
+                            failed_containers+=("$container ($status)")
+                            log_error "start_all_containers" "Container $container status: $status" "$container"
+                            echo "XXX"
+                            echo "$percent"
+                            echo "✗ $display_name: $status"
+                            echo "XXX"
+                        fi
+                    done
                     
-                    if [ "$status" = "running" ]; then
-                        success_count=$((success_count + 1))
+                    echo "XXX"
+                    echo "100"
+                    if [ $fail_count -eq 0 ]; then
+                        echo "All containers running!"
                     else
-                        fail_count=$((fail_count + 1))
-                        failed_containers+=("$container")
-                        log_error "start_all_containers" "Container $container status: $status" "$container"
+                        echo "Some containers not running ($fail_count/$total)"
                     fi
-                done
+                    echo "XXX"
+                    sleep 1
+                } | dialog --colors --gauge "Verifying containers..." 8 60 0
                 
                 if [ $fail_count -eq 0 ]; then
-                    dialog --stdout --msgbox "All containers created and started successfully.\n\nStarted: $success_count container(s)" 10 50 2>&1 >/dev/null
+                    dialog --stdout --msgbox "All containers created and started successfully!\n\nStarted: $success_count container(s)" 10 50 2>&1 >/dev/null
                 else
                     local error_msg="Some containers failed to start.\n\nStarted: $success_count\nFailed: $fail_count\n\nFailed containers:\n$(printf '%s\n' "${failed_containers[@]}")"
                     dialog --stdout --msgbox "$error_msg" 15 60 2>&1 >/dev/null
@@ -760,23 +779,19 @@ create_and_start_containers() {
     fi
     
     # Step 4: Verify container status
-    sleep 2
-    local created_containers
-    created_containers=$(get_all_containers)
+    # Wait a bit longer for containers to start
+    sleep 3
     
-    local containers=()
-    while IFS= read -r line; do
-        [ -n "$line" ] && containers+=("$line")
-    done <<< "$created_containers"
-    
-    local total=${#containers[@]}
+    # Get expected container names from docker-compose.yml
+    local expected_containers=("moad-vector" "moad-loki" "moad-prometheus" "moad-mysqld-exporter" "moad-grafana")
+    local total=${#expected_containers[@]}
     local success_count=0
     local fail_count=0
     local failed_containers=()
     
     {
-        for i in "${!containers[@]}"; do
-            local container="${containers[$i]}"
+        for i in "${!expected_containers[@]}"; do
+            local container="${expected_containers[$i]}"
             local container_num=$((i + 1))
             local percent=$((container_num * 100 / total))
             local display_name=$(echo "$container" | sed 's/^moad-//')
@@ -787,7 +802,7 @@ create_and_start_containers() {
             echo "$percent"
             echo "Checking $display_name ($container_num/$total)..."
             echo "XXX"
-            sleep 0.3
+            sleep 0.5
             
             if [ "$status" = "running" ]; then
                 success_count=$((success_count + 1))
@@ -795,9 +810,17 @@ create_and_start_containers() {
                 echo "$percent"
                 echo "✓ $display_name: running"
                 echo "XXX"
+            elif [ "$status" = "not_found" ]; then
+                fail_count=$((fail_count + 1))
+                failed_containers+=("$container (not found)")
+                log_error "create_and_start_containers" "Container $container not found after creation" "$container"
+                echo "XXX"
+                echo "$percent"
+                echo "✗ $display_name: not found"
+                echo "XXX"
             else
                 fail_count=$((fail_count + 1))
-                failed_containers+=("$container")
+                failed_containers+=("$container ($status)")
                 log_error "create_and_start_containers" "Container $container status: $status" "$container"
                 echo "XXX"
                 echo "$percent"
