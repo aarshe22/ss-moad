@@ -220,13 +220,22 @@ transforms:
       
       # Ensure all IDs are integers (for MySQL join compatibility)
       if !is_null(.user_id) {
-        .user_id = to_int(.user_id)
+        .user_id, err = to_int(string!(.user_id))
+        if !is_null(err) {
+          .user_id = null
+        }
       }
       if !is_null(.school_id) {
-        .school_id = to_int(.school_id)
+        .school_id, err = to_int(string!(.school_id))
+        if !is_null(err) {
+          .school_id = null
+        }
       }
       if !is_null(.student_id) {
-        .student_id = to_int(.student_id)
+        .student_id, err = to_int(string!(.student_id))
+        if !is_null(err) {
+          .student_id = null
+        }
       }
       # Convert student_ids array elements to integers (Vector 0.38.0 doesn't support map closures)
       # For now, keep as strings - they'll be converted during join operations if needed
@@ -234,16 +243,28 @@ transforms:
       #   .student_ids = map(.student_ids, |id| { to_int(id) ?? null })
       # }
       if !is_null(.form_id) {
-        .form_id = to_int(.form_id)
+        .form_id, err = to_int(string!(.form_id))
+        if !is_null(err) {
+          .form_id = null
+        }
       }
       if !is_null(.user_form_id) {
-        .user_form_id = to_int(.user_form_id)
+        .user_form_id, err = to_int(string!(.user_form_id))
+        if !is_null(err) {
+          .user_form_id = null
+        }
       }
       if !is_null(.district_id) {
-        .district_id = to_int(.district_id)
+        .district_id, err = to_int(string!(.district_id))
+        if !is_null(err) {
+          .district_id = null
+        }
       }
       if !is_null(.integration_task_id) {
-        .integration_task_id = to_int(.integration_task_id)
+        .integration_task_id, err = to_int(string!(.integration_task_id))
+        if !is_null(err) {
+          .integration_task_id = null
+        }
       }
       
       # Add metadata
@@ -371,13 +392,22 @@ transforms:
       }
       
       if !is_null(.user_id) {
-        .user_id = to_int(.user_id)
+        .user_id, err = to_int(string!(.user_id))
+        if !is_null(err) {
+          .user_id = null
+        }
       }
       if !is_null(.school_id) {
-        .school_id = to_int(.school_id)
+        .school_id, err = to_int(string!(.school_id))
+        if !is_null(err) {
+          .school_id = null
+        }
       }
       if !is_null(.student_id) {
-        .student_id = to_int(.student_id)
+        .student_id, err = to_int(string!(.student_id))
+        if !is_null(err) {
+          .student_id = null
+        }
       }
       # Convert student_ids array elements to integers (Vector 0.38.0 doesn't support map closures)
       # For now, keep as strings - they'll be converted during join operations if needed
@@ -385,16 +415,28 @@ transforms:
       #   .student_ids = map(.student_ids, |id| { to_int(id) ?? null })
       # }
       if !is_null(.form_id) {
-        .form_id = to_int(.form_id)
+        .form_id, err = to_int(string!(.form_id))
+        if !is_null(err) {
+          .form_id = null
+        }
       }
       if !is_null(.user_form_id) {
-        .user_form_id = to_int(.user_form_id)
+        .user_form_id, err = to_int(string!(.user_form_id))
+        if !is_null(err) {
+          .user_form_id = null
+        }
       }
       if !is_null(.district_id) {
-        .district_id = to_int(.district_id)
+        .district_id, err = to_int(string!(.district_id))
+        if !is_null(err) {
+          .district_id = null
+        }
       }
       if !is_null(.integration_task_id) {
-        .integration_task_id = to_int(.integration_task_id)
+        .integration_task_id, err = to_int(string!(.integration_task_id))
+        if !is_null(err) {
+          .integration_task_id = null
+        }
       }
       
       .source_component = "tomcat"
@@ -421,7 +463,10 @@ transforms:
       .school_subdomain = match(.http_path, r'/([a-z0-9-]+)/')
       .school_id = match(.http_path, r'(?:school|schoolId)[\s:=/]+(\d+)')
       if !is_null(.school_id) {
-        .school_id = to_int(.school_id)
+        .school_id, err = to_int(string!(.school_id))
+        if !is_null(err) {
+          .school_id = null
+        }
       }
       
       # Device classification
@@ -474,7 +519,10 @@ transforms:
       .school_subdomain = match(.http_path, r'/([a-z0-9-]+)/')
       .school_id = match(.http_path, r'(?:school|schoolId)[\s:=/]+(\d+)')
       if !is_null(.school_id) {
-        .school_id = to_int(.school_id)
+        .school_id, err = to_int(string!(.school_id))
+        if !is_null(err) {
+          .school_id = null
+        }
       }
       .device = "unknown"
       if match(.user_agent, r'(?i)(mobile|android|iphone|ipad)') {
@@ -604,27 +652,48 @@ transforms:
       
       # ID fields (ensure integer type for MySQL joins)
       if !is_null(.user_id) {
-        .mysql_join_user_id = to_int(.user_id)
+        .mysql_join_user_id, err = to_int(string!(.user_id))
+        if !is_null(err) {
+          .mysql_join_user_id = null
+        }
       }
       if !is_null(.school_id) {
-        .mysql_join_school_id = to_int(.school_id)
+        .mysql_join_school_id, err = to_int(string!(.school_id))
+        if !is_null(err) {
+          .mysql_join_school_id = null
+        }
       }
       if !is_null(.student_id) {
-        .mysql_join_student_id = to_int(.student_id)
+        .mysql_join_student_id, err = to_int(string!(.student_id))
+        if !is_null(err) {
+          .mysql_join_student_id = null
+        }
       }
       
       # PermissionMan-specific identifiers
       if !is_null(.form_id) {
-        .mysql_join_form_id = to_int(.form_id)
+        .mysql_join_form_id, err = to_int(string!(.form_id))
+        if !is_null(err) {
+          .mysql_join_form_id = null
+        }
       }
       if !is_null(.user_form_id) {
-        .mysql_join_user_form_id = to_int(.user_form_id)
+        .mysql_join_user_form_id, err = to_int(string!(.user_form_id))
+        if !is_null(err) {
+          .mysql_join_user_form_id = null
+        }
       }
       if !is_null(.district_id) {
-        .mysql_join_district_id = to_int(.district_id)
+        .mysql_join_district_id, err = to_int(string!(.district_id))
+        if !is_null(err) {
+          .mysql_join_district_id = null
+        }
       }
       if !is_null(.integration_task_id) {
-        .mysql_join_integration_task_id = to_int(.integration_task_id)
+        .mysql_join_integration_task_id, err = to_int(string!(.integration_task_id))
+        if !is_null(err) {
+          .mysql_join_integration_task_id = null
+        }
       }
       
       # Add join hints for Grafana queries
