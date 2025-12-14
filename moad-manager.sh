@@ -466,7 +466,7 @@ view_env_file() {
     local env_content
     env_content=$(cat .env)
     
-    dialog --stdout --title ".env File Contents" --msgbox "$env_content" 20 70 2>&1 >/dev/null
+    dialog --stdout --title ".env File Contents" --textbox <(echo "$env_content") 20 70 2>&1 >/dev/null
 }
 
 # ============================================================================
@@ -477,7 +477,7 @@ show_container_status() {
     local status_output
     status_output=$(docker compose ps 2>/dev/null || echo "No containers found or docker compose not available")
     
-    dialog --stdout --title "MOAD Container Status" --msgbox "$status_output" 20 80 2>&1 >/dev/null
+    dialog --stdout --title "MOAD Container Status" --textbox <(echo "$status_output") 20 80 2>&1 >/dev/null
 }
 
 stop_all_containers() {
@@ -1180,11 +1180,12 @@ view_container_logs() {
         logs="No logs available for $selected"
     fi
     
-    dialog --stdout --title "Logs: $selected" --msgbox "$logs" 25 80 2>&1 >/dev/null
+    dialog --stdout --title "Logs: $selected" --textbox <(echo "$logs") 25 80 2>&1 >/dev/null
 }
 
 view_recent_errors() {
-    local all_errors=""
+    local temp_error_file
+    temp_error_file=$(mktemp /tmp/moad-errors-XXXXXX)
     local has_errors=false
     
     # Show MOAD Manager error log
@@ -1192,8 +1193,9 @@ view_recent_errors() {
         local manager_errors
         manager_errors=$(tail -50 "$ERROR_LOG" 2>/dev/null)
         if [ -n "$manager_errors" ]; then
-            all_errors+="=== MOAD Manager Error Log (last 50 lines) ===\n"
-            all_errors+="$manager_errors\n\n"
+            echo "=== MOAD Manager Error Log (last 50 lines) ===" >> "$temp_error_file"
+            echo "$manager_errors" >> "$temp_error_file"
+            echo "" >> "$temp_error_file"
             has_errors=true
         fi
     fi
@@ -1215,9 +1217,10 @@ view_recent_errors() {
                 # Check if container is unhealthy or exited
                 if [ "$status" != "running" ] && [ "$status" != "not_found" ]; then
                     if [ $container_error_count -eq 0 ]; then
-                        all_errors+="=== Container Status Errors ===\n"
+                        echo "=== Container Status Errors ===" >> "$temp_error_file"
                     fi
-                    all_errors+="\n$container: Status=$status\n"
+                    echo "" >> "$temp_error_file"
+                    echo "$container: Status=$status" >> "$temp_error_file"
                     container_error_count=$((container_error_count + 1))
                     has_errors=true
                 fi
@@ -1227,9 +1230,11 @@ view_recent_errors() {
                 log_errors=$(docker compose logs --tail=20 "$container" 2>&1 | grep -iE "error|fatal|exception|failed|panic|crash" | head -5)
                 if [ -n "$log_errors" ]; then
                     if [ $container_error_count -eq 0 ]; then
-                        all_errors+="=== Container Log Errors ===\n"
+                        echo "=== Container Log Errors ===" >> "$temp_error_file"
                     fi
-                    all_errors+="\n--- $container ---\n$log_errors\n"
+                    echo "" >> "$temp_error_file"
+                    echo "--- $container ---" >> "$temp_error_file"
+                    echo "$log_errors" >> "$temp_error_file"
                     container_error_count=$((container_error_count + 1))
                     has_errors=true
                 fi
@@ -1238,12 +1243,37 @@ view_recent_errors() {
     fi
     
     if [ "$has_errors" = "false" ]; then
-        all_errors="No recent errors found.\n\n- MOAD Manager error log: $ERROR_LOG\n- Container logs: No errors detected"
+        echo "No recent errors found." >> "$temp_error_file"
+        echo "" >> "$temp_error_file"
+        echo "- MOAD Manager error log: $ERROR_LOG" >> "$temp_error_file"
+        echo "- Container logs: No errors detected" >> "$temp_error_file"
     else
-        all_errors+="\n\nNote: For detailed container logs, use 'View Container Logs' option."
+        echo "" >> "$temp_error_file"
+        echo "Note: For detailed container logs, use 'View Container Logs' option." >> "$temp_error_file"
     fi
     
-    dialog --stdout --title "Recent Errors" --msgbox "$all_errors" 30 90 2>&1 >/dev/null
+    # Add file location at the top for easy copying
+    {
+        echo "=== Error Log File Location (for copying) ==="
+        echo "$temp_error_file"
+        echo ""
+        echo "=== Error Details (scroll with arrow keys) ==="
+        echo ""
+        cat "$temp_error_file"
+    } > "${temp_error_file}.display"
+    
+    # Use textbox for better scrolling (though text selection is still limited in dialog)
+    dialog --stdout --title "Recent Errors" --textbox "${temp_error_file}.display" 30 90 2>&1 >/dev/null
+    
+    # Ask if user wants to keep the file
+    dialog --stdout --yesno "Error log saved to:\n\n$temp_error_file\n\nKeep this file for later reference?\n\n(You can copy text from the file using: cat $temp_error_file)" 12 70 2>&1 >/dev/null
+    local keep_file=$?
+    
+    if [ $keep_file -ne 0 ]; then
+        rm -f "$temp_error_file" "${temp_error_file}.display"
+    else
+        dialog --stdout --msgbox "Error log kept at:\n\n$temp_error_file\n\nYou can view it with: cat $temp_error_file\n\nOr copy it to your clipboard from another terminal." 10 70 2>&1 >/dev/null
+    fi
 }
 
 pull_latest_images() {
@@ -1429,7 +1459,7 @@ show_service_urls() {
     info+="  Port: 9104\n"
     info+="  Metrics: ${PROMETHEUS_URL}/targets\n"
     
-    dialog --stdout --title "Service URLs" --msgbox "$info" 18 70 2>&1 >/dev/null
+    dialog --stdout --title "Service URLs" --textbox <(echo -e "$info") 18 70 2>&1 >/dev/null
 }
 
 check_service_health() {
@@ -1437,8 +1467,8 @@ check_service_health() {
     local all_healthy=true
     
     # Check Grafana
-    dialog --stdout --infobox "Checking services..." 5 50 2>&1 >/dev/null
-    
+    dialog --stdout --infobox "Checking Grafana (1/5)..." 5 50 2>&1 >/dev/null
+    sleep 0.5
     if curl -s -f "${GRAFANA_URL}/api/health" >/dev/null 2>&1; then
         health_info+="✓ Grafana: Healthy\n"
     else
@@ -1447,6 +1477,8 @@ check_service_health() {
     fi
     
     # Check Prometheus
+    dialog --stdout --infobox "Checking Prometheus (2/5)..." 5 50 2>&1 >/dev/null
+    sleep 0.5
     if curl -s -f "${PROMETHEUS_URL}/-/healthy" >/dev/null 2>&1; then
         health_info+="✓ Prometheus: Healthy\n"
     else
@@ -1455,6 +1487,8 @@ check_service_health() {
     fi
     
     # Check Loki
+    dialog --stdout --infobox "Checking Loki (3/5)..." 5 50 2>&1 >/dev/null
+    sleep 0.5
     if curl -s -f "${LOKI_URL}/ready" >/dev/null 2>&1; then
         health_info+="✓ Loki: Healthy\n"
     else
@@ -1463,6 +1497,8 @@ check_service_health() {
     fi
     
     # Check MySQL Exporter
+    dialog --stdout --infobox "Checking MySQL Exporter (4/5)..." 5 50 2>&1 >/dev/null
+    sleep 0.5
     if curl -s -f "http://localhost:9104/metrics" >/dev/null 2>&1; then
         health_info+="✓ MySQL Exporter: Healthy\n"
     else
@@ -1471,6 +1507,8 @@ check_service_health() {
     fi
     
     # Check Vector
+    dialog --stdout --infobox "Checking Vector (5/5)..." 5 50 2>&1 >/dev/null
+    sleep 0.5
     if docker ps --format "{{.Names}}" | grep -q "^moad-vector$"; then
         health_info+="✓ Vector: Running\n"
     else
@@ -1485,7 +1523,7 @@ check_service_health() {
         health_info+="Overall Status: Some services unhealthy ✗"
     fi
     
-    dialog --stdout --title "Service Health" --msgbox "$health_info" 15 60 2>&1 >/dev/null
+    dialog --stdout --title "Service Health" --textbox <(echo -e "$health_info") 15 60 2>&1 >/dev/null
 }
 
 test_mysql_connectivity() {
@@ -1511,9 +1549,11 @@ test_mysql_connectivity() {
         -e "SELECT 1;" 2>&1)
     
     if [ $? -eq 0 ]; then
-        dialog --stdout --msgbox "MySQL Connection: SUCCESS\n\nHost: $mysql_host\nUser: $mysql_user\n\nConnection test passed." 10 60 2>&1 >/dev/null
+        local success_msg="MySQL Connection: SUCCESS\n\nHost: $mysql_host\nUser: $mysql_user\n\nConnection test passed."
+        dialog --stdout --title "MySQL Connectivity Test" --textbox <(echo -e "$success_msg") 10 60 2>&1 >/dev/null
     else
-        dialog --stdout --msgbox "MySQL Connection: FAILED\n\nError details:\n$result\n\nPlease check:\n- MySQL host is correct\n- User credentials are correct\n- Network connectivity" 15 70 2>&1 >/dev/null
+        local error_msg="MySQL Connection: FAILED\n\nError details:\n$result\n\nPlease check:\n- MySQL host is correct\n- User credentials are correct\n- Network connectivity"
+        dialog --stdout --title "MySQL Connectivity Test" --textbox <(echo -e "$error_msg") 15 70 2>&1 >/dev/null
     fi
 }
 
@@ -1531,7 +1571,7 @@ show_disk_usage() {
     info+="System:\n$disk_info\n\n"
     info+="Docker:\n$docker_info"
     
-    dialog --stdout --title "Disk Usage" --msgbox "$info" 15 70 2>&1 >/dev/null
+    dialog --stdout --title "Disk Usage" --textbox <(echo -e "$info") 15 70 2>&1 >/dev/null
 }
 
 show_system_resources() {
@@ -1547,7 +1587,7 @@ show_system_resources() {
     info+="Memory: ${mem_info}\n"
     info+="Load Average: ${load_info}\n"
     
-    dialog --stdout --title "System Resources" --msgbox "$info" 10 60 2>&1 >/dev/null
+    dialog --stdout --title "System Resources" --textbox <(echo -e "$info") 10 60 2>&1 >/dev/null
 }
 
 # ============================================================================
@@ -1576,8 +1616,8 @@ view_configuration_files() {
     
     if [ -f "$selected" ]; then
         local content
-        content=$(head -100 "$selected" 2>/dev/null || echo "Error reading file")
-        dialog --stdout --title "Config: $selected" --msgbox "$content" 25 80 2>&1 >/dev/null
+        content=$(cat "$selected" 2>/dev/null || echo "Error reading file")
+        dialog --stdout --title "Config: $selected" --textbox <(echo "$content") 25 80 2>&1 >/dev/null
     else
         dialog --stdout --msgbox "File not found: $selected" 8 50 2>&1 >/dev/null
     fi
