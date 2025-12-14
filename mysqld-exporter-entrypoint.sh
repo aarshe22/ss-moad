@@ -22,12 +22,17 @@ if [ -z "$MYSQL_HOST" ]; then
     exit 1
 fi
 
-# Construct DATA_SOURCE_NAME at runtime (not at docker-compose parse time)
-export DATA_SOURCE_NAME="${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(${MYSQL_HOST}:3306)/"
+# Use command-line flags instead of DATA_SOURCE_NAME (more reliable in v0.15.1)
+# Format: --mysqld.address=host:port --mysqld.username=user --mysqld.password=password
 
-# Debug output (can be removed in production)
-echo "Starting mysqld_exporter with DATA_SOURCE_NAME for user: ${MYSQL_USER}@${MYSQL_HOST}" >&2
+# Debug output
+echo "Starting mysqld_exporter with MySQL connection: ${MYSQL_USER}@${MYSQL_HOST}:3306" >&2
 
-# Execute the original mysqld_exporter command
-exec /bin/mysqld_exporter "$@"
+# Execute mysqld_exporter with command-line flags
+# Pass through any additional arguments from docker-compose command section
+exec /bin/mysqld_exporter \
+    --mysqld.address="${MYSQL_HOST}:3306" \
+    --mysqld.username="${MYSQL_USER}" \
+    --mysqld.password="${MYSQL_PASSWORD}" \
+    "$@"
 
