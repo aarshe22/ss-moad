@@ -672,7 +672,7 @@ sinks:
     type: file
     inputs:
       - normalize_identifiers
-    path: /data/moad/logs/structured
+    path: /var/lib/vector/structured
     filename_append_uuid: true
     filename_extension: jsonl
     encoding:

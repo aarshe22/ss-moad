@@ -8,7 +8,7 @@ services:
     volumes:
       - ./vector/vector.yml:/etc/vector/vector.yml:ro
       - /data/moad/logs:/data/moad/logs:ro
-      - vector-structured:/data/moad/logs/structured
+      - ./data/vector/structured:/var/lib/vector/structured
     command: ["--config-dir", "/etc/vector"]
     restart: unless-stopped
     networks:
@@ -95,7 +95,6 @@ volumes:
   loki-data:
   prometheus-data:
   grafana-data:
-  vector-structured:
 
 networks:
   moad-network:

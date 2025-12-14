@@ -6,8 +6,8 @@ loki-data/
 prometheus-data/
 grafana-data/
 
-# Structured logs (may contain sensitive data)
-vector/structured/
+# Local data directory (structured logs, etc.)
+data/
 
 # IDE files
 .vscode/
