@@ -1453,13 +1453,13 @@ show_service_urls() {
     local grafana_pass
     grafana_pass=$(read_env_value "GRAFANA_ADMIN_PASSWORD")
     
-    # First show all service URLs
+    # Show all service URLs
     local info="MOAD Service URLs:\n\n"
     info+="Grafana (Visualization):\n"
     info+="  URL: ${GRAFANA_URL}\n"
     info+="  Username: admin\n"
     if [ -n "$grafana_pass" ]; then
-        info+="  Password: (see next dialog for easy copy)\n"
+        info+="  Password: ${grafana_pass}\n"
     else
         info+="  Password: (check .env file)\n"
     fi
@@ -1482,15 +1482,22 @@ show_service_urls() {
     dialog --stdout --title "Service URLs" --textbox "$temp_file" 18 70 >/dev/null 2>&1
     rm -f "$temp_file"
     
-    # Then show password separately in a textbox for easy copy
+    # Show menu with option to exit and echo password
     if [ -n "$grafana_pass" ]; then
-        local pass_file
-        pass_file=$(mktemp /tmp/moad-password-XXXXXX)
-        echo -e "Grafana Admin Password:\n\n${grafana_pass}\n\n\n(Select text to copy, then press OK to return)" > "$pass_file"
-        # Match the exact pattern of other working textboxes - use --stdout with redirection
-        # This ensures the dialog waits for user input (OK button) before returning
-        dialog --stdout --title "Grafana Password (Select to Copy)" --textbox "$pass_file" 10 60 2>&1 >/dev/null
-        rm -f "$pass_file"
+        local choice
+        choice=$(dialog --stdout --title "Service URLs" \
+            --menu "Select an action:" 10 50 2 \
+            "1" "Return to Main Menu" \
+            "2" "Exit and Echo Password to Shell" 2>&1)
+        
+        if [ "$choice" = "2" ]; then
+            # Exit moad-manager and echo password to stdout
+            clear
+            echo "Grafana URL: ${GRAFANA_URL}"
+            echo "Grafana Username: admin"
+            echo "Grafana Password: ${grafana_pass}"
+            exit 0
+        fi
     fi
 }
 
