@@ -146,26 +146,105 @@ MYSQL_GRAFANA_PASSWORD=your_grafana_readonly_password
 
 ### Start Services
 
+**Option 1: Use MOAD Manager (Recommended)**
+```bash
+./moad-manager.sh
+# Select "4. Docker: Start All Containers" or "5. Docker: Create & Start"
+```
+
+**Option 2: Use docker compose directly**
 ```bash
 docker compose up -d
 ```
 
 ### Access Dashboards
 
+View service URLs and access information in MOAD Manager:
+```bash
+./moad-manager.sh
+# Select "13. Services: Show Service URLs"
+```
+
+Or access directly:
 - Grafana: http://dev1.schoolsoft.net:3000
   - Default credentials: `admin` / (from `.env`)
 - Prometheus: http://dev1.schoolsoft.net:9090
 - Loki: http://dev1.schoolsoft.net:3100
 
-## Scripts
+## MOAD Manager
 
-- `moad-manager.sh`: Comprehensive MOAD stack management interface with dialog UI
-  - Environment file generation and management
-  - Docker container operations (start/stop/restart, logs, errors)
-  - Service health checks and connectivity tests
-  - System resource monitoring
-  - Configuration file viewing
-  - Complete Docker cleanup (prune & purge)
+The `moad-manager.sh` script provides a comprehensive, user-friendly interface for managing the entire MOAD stack.
+
+### Key Features
+
+**Visual Interface:**
+- **Status Bar**: Real-time container health indicators at the top showing overall status (✓ HEALTHY / ⚠ WARNING / ✗ FAILURE) and individual container states
+- **Color-Coded Menu**: Organized by function groups for easy navigation
+  - 🔵 Blue: Environment management
+  - 🟢 Green: Docker operations
+  - 🔴 Red: Destructive operations
+  - 🔵 Cyan: Service management
+  - 🟡 Yellow: System monitoring
+  - 🟣 Magenta: Configuration viewing
+- **Progress Bars**: Visual feedback for long-running operations (image pulls, container start/stop/restart)
+
+**Environment Management:**
+- Generate `.env` file with interactive prompts
+- Pre-loads existing values for easy updates
+- Generates secure random 14-character passwords
+- View `.env` file contents (no password masking - assumes root access)
+
+**Docker Operations:**
+- View container status with health indicators
+- Start/stop/restart all containers or individual containers
+- Create & start containers (with build support) - handles post-prune scenarios
+- View container logs (configurable line count)
+- View recent errors across all containers
+- Pull latest images with per-image progress tracking
+- Complete Docker cleanup (prune & purge) with warnings
+
+**Service Management:**
+- Show service URLs and access information
+- Check service health (tests all endpoints: Grafana, Prometheus, Loki, MySQL Exporter, Vector)
+- Test MySQL connectivity with credential validation
+
+**System Monitoring:**
+- View disk usage (system + Docker)
+- View system resources (CPU, memory, load average)
+
+**Configuration Management:**
+- View configuration files (docker-compose.yml, vector.yml, prometheus.yml, loki-config.yml)
+
+**Backup & Restore:**
+- **Backup**: Create JSON backup file containing all configuration
+  - `.env` file (all passwords and settings)
+  - All configuration files
+  - Grafana provisioning and dashboard files
+  - Backup metadata (version, timestamp, hostname)
+- **Restore**: Restore configuration to new server
+  - Validates backup file structure
+  - Shows backup information before restore
+  - Restores all files to original paths
+  - Creates directories as needed
+- **Migration**: Perfect for moving MOAD to a new server (clone repo, restore backup, start services)
+
+**User Experience:**
+- Cancel/ESC always returns to main menu (never drops to shell)
+- Only explicit "Exit" option or Ctrl-C exits the program
+- Refresh button to update status bar
+- All operations provide clear feedback and error messages
+
+### Usage
+
+```bash
+./moad-manager.sh
+```
+
+The script will:
+1. Check for `dialog` package (prompts to install if missing)
+2. Display status bar with container health
+3. Show color-coded menu of operations
+4. Handle all user interactions gracefully
 
 ## Configuration Files
 
@@ -192,6 +271,31 @@ docker compose up -d
 
 **Change History:**
 - [CHANGELOG_MYSQL_MONITORING.md](CHANGELOG_MYSQL_MONITORING.md): MySQL monitoring extension changelog
+
+## Backup and Migration
+
+MOAD Manager includes comprehensive backup and restore functionality:
+
+### Backup
+- Creates JSON backup file with all configuration
+- Includes `.env` file, all config files, and Grafana dashboards
+- Base64-encoded file contents in JSON format
+- Backup metadata (version, timestamp, hostname)
+
+### Restore
+- Validates backup file structure
+- Restores all files to original paths
+- Works on new server after `git clone` and `git pull`
+- Shows backup information before restore
+
+**Usage:**
+```bash
+./moad-manager.sh
+# Select "20. Backup: Backup MOAD Configuration" to create backup
+# Select "21. Backup: Restore MOAD Configuration" to restore
+```
+
+**⚠️ Security Note**: Backup files contain sensitive information (passwords). Store securely!
 
 ## Success Criteria
 
