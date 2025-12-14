@@ -1486,8 +1486,10 @@ show_service_urls() {
     if [ -n "$grafana_pass" ]; then
         local pass_file
         pass_file=$(mktemp /tmp/moad-password-XXXXXX)
-        echo -e "Grafana Admin Password:\n\n${grafana_pass}\n\n\n(Use mouse or keyboard to select and copy)" > "$pass_file"
-        dialog --stdout --title "Grafana Password (Select to Copy)" --textbox "$pass_file" 10 60 >/dev/null 2>&1
+        echo -e "Grafana Admin Password:\n\n${grafana_pass}\n\n\n(Select text to copy, then press OK to return)" > "$pass_file"
+        # Match the exact pattern of other working textboxes - use --stdout with redirection
+        # This ensures the dialog waits for user input (OK button) before returning
+        dialog --stdout --title "Grafana Password (Select to Copy)" --textbox "$pass_file" 10 60 2>&1 >/dev/null
         rm -f "$pass_file"
     fi
 }
