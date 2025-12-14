@@ -16,7 +16,7 @@ sources:
       mode: continue_through
       condition_pattern: '^(?!\d{4}-\d{2}-\d{2})'
     encoding:
-      except: [utf8, utf16, utf16le, utf16be]
+      charset: utf8
     host_key: host
 
   # Tomcat logs - PFM application
@@ -29,7 +29,7 @@ sources:
       mode: continue_through
       condition_pattern: '^(?!\d{4}-\d{2}-\d{2})'
     encoding:
-      except: [utf8, utf16, utf16le, utf16be]
+      charset: utf8
     host_key: host
 
   # HAProxy logs - CM
