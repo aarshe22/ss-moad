@@ -462,11 +462,13 @@ view_env_file() {
         return
     fi
     
-    # Display .env file contents without masking (user has root access)
-    local env_content
-    env_content=$(cat .env)
+    # Use temporary file for dialog textbox (cannot use process substitution)
+    local temp_file
+    temp_file=$(mktemp /tmp/moad-env-XXXXXX)
+    cat .env > "$temp_file"
     
-    dialog --stdout --title ".env File Contents" --textbox <(echo "$env_content") 20 70 2>&1 >/dev/null
+    dialog --stdout --title ".env File Contents" --textbox "$temp_file" 20 70 2>&1 >/dev/null
+    rm -f "$temp_file"
 }
 
 # ============================================================================
@@ -477,7 +479,13 @@ show_container_status() {
     local status_output
     status_output=$(docker compose ps 2>/dev/null || echo "No containers found or docker compose not available")
     
-    dialog --stdout --title "MOAD Container Status" --textbox <(echo "$status_output") 20 80 2>&1 >/dev/null
+    # Use temporary file for dialog textbox (cannot use process substitution)
+    local temp_file
+    temp_file=$(mktemp /tmp/moad-status-XXXXXX)
+    echo "$status_output" > "$temp_file"
+    
+    dialog --stdout --title "MOAD Container Status" --textbox "$temp_file" 20 80 2>&1 >/dev/null
+    rm -f "$temp_file"
 }
 
 stop_all_containers() {
@@ -1180,7 +1188,13 @@ view_container_logs() {
         logs="No logs available for $selected"
     fi
     
-    dialog --stdout --title "Logs: $selected" --textbox <(echo "$logs") 25 80 2>&1 >/dev/null
+    # Use temporary file for dialog textbox (cannot use process substitution)
+    local temp_file
+    temp_file=$(mktemp /tmp/moad-logs-XXXXXX)
+    echo "$logs" > "$temp_file"
+    
+    dialog --stdout --title "Logs: $selected" --textbox "$temp_file" 25 80 2>&1 >/dev/null
+    rm -f "$temp_file"
 }
 
 view_recent_errors() {
@@ -1450,69 +1464,119 @@ show_service_urls() {
     fi
     info+="\n"
     info+="Prometheus (Metrics):\n"
-    info+="  URL: ${PROMETHEUS_URL}\n"
+    info+="  Internal: http://moad-prometheus:9090\n"
+    info+="  Access via Grafana datasource\n"
     info+="\n"
     info+="Loki (Logs):\n"
-    info+="  URL: ${LOKI_URL}\n"
+    info+="  Internal: http://moad-loki:3100\n"
+    info+="  Access via Grafana datasource\n"
     info+="\n"
     info+="MySQL Exporter:\n"
-    info+="  Port: 9104\n"
-    info+="  Metrics: ${PROMETHEUS_URL}/targets\n"
+    info+="  Internal: http://moad-mysqld-exporter:9104\n"
+    info+="  Metrics scraped by Prometheus\n"
     
-    dialog --stdout --title "Service URLs" --textbox <(echo -e "$info") 18 70 2>&1 >/dev/null
+    local temp_file
+    temp_file=$(mktemp /tmp/moad-urls-XXXXXX)
+    echo -e "$info" > "$temp_file"
+    dialog --stdout --title "Service URLs" --textbox "$temp_file" 18 70 2>&1 >/dev/null
+    rm -f "$temp_file"
 }
 
 check_service_health() {
     local health_info="Service Health Check:\n\n"
     local all_healthy=true
     
-    # Check Grafana
+    # Helper function to check container health
+    check_container_health() {
+        local container_name=$1
+        local service_name=$2
+        
+        # Check if container exists and is running
+        local status
+        status=$(docker inspect --format='{{.State.Status}}' "$container_name" 2>/dev/null)
+        
+        if [ -z "$status" ]; then
+            echo "✗ $service_name: Container not found"
+            return 1
+        elif [ "$status" = "running" ]; then
+            # Check health status if healthcheck is configured
+            local health
+            health=$(docker inspect --format='{{.State.Health.Status}}' "$container_name" 2>/dev/null)
+            if [ "$health" = "healthy" ]; then
+                echo "✓ $service_name: Healthy"
+                return 0
+            elif [ "$health" = "unhealthy" ]; then
+                echo "✗ $service_name: Unhealthy"
+                return 1
+            elif [ "$health" = "starting" ]; then
+                echo "⚠ $service_name: Starting (health check in progress)"
+                return 1
+            elif [ -z "$health" ] || [ "$health" = "<no value>" ]; then
+                # No healthcheck configured, just check if running
+                echo "✓ $service_name: Running (no healthcheck)"
+                return 0
+            else
+                echo "? $service_name: Status=$health"
+                return 1
+            fi
+        else
+            echo "✗ $service_name: $status"
+            return 1
+        fi
+    }
+    
+    # Check Grafana (external access)
     dialog --stdout --infobox "Checking Grafana (1/5)..." 5 50 2>&1 >/dev/null
-    sleep 0.5
-    if curl -s -f "${GRAFANA_URL}/api/health" >/dev/null 2>&1; then
-        health_info+="✓ Grafana: Healthy\n"
+    local grafana_result
+    grafana_result=$(check_container_health "moad-grafana" "Grafana")
+    if [ $? -eq 0 ]; then
+        health_info+="$grafana_result\n"
     else
-        health_info+="✗ Grafana: Unreachable\n"
+        health_info+="$grafana_result\n"
         all_healthy=false
     fi
     
-    # Check Prometheus
+    # Check Prometheus (internal only)
     dialog --stdout --infobox "Checking Prometheus (2/5)..." 5 50 2>&1 >/dev/null
-    sleep 0.5
-    if curl -s -f "${PROMETHEUS_URL}/-/healthy" >/dev/null 2>&1; then
-        health_info+="✓ Prometheus: Healthy\n"
+    local prometheus_result
+    prometheus_result=$(check_container_health "moad-prometheus" "Prometheus")
+    if [ $? -eq 0 ]; then
+        health_info+="$prometheus_result\n"
     else
-        health_info+="✗ Prometheus: Unreachable\n"
+        health_info+="$prometheus_result\n"
         all_healthy=false
     fi
     
-    # Check Loki
+    # Check Loki (internal only)
     dialog --stdout --infobox "Checking Loki (3/5)..." 5 50 2>&1 >/dev/null
-    sleep 0.5
-    if curl -s -f "${LOKI_URL}/ready" >/dev/null 2>&1; then
-        health_info+="✓ Loki: Healthy\n"
+    local loki_result
+    loki_result=$(check_container_health "moad-loki" "Loki")
+    if [ $? -eq 0 ]; then
+        health_info+="$loki_result\n"
     else
-        health_info+="✗ Loki: Unreachable\n"
+        health_info+="$loki_result\n"
         all_healthy=false
     fi
     
-    # Check MySQL Exporter
+    # Check MySQL Exporter (internal only)
     dialog --stdout --infobox "Checking MySQL Exporter (4/5)..." 5 50 2>&1 >/dev/null
-    sleep 0.5
-    if curl -s -f "http://localhost:9104/metrics" >/dev/null 2>&1; then
-        health_info+="✓ MySQL Exporter: Healthy\n"
+    local mysql_exporter_result
+    mysql_exporter_result=$(check_container_health "moad-mysqld-exporter" "MySQL Exporter")
+    if [ $? -eq 0 ]; then
+        health_info+="$mysql_exporter_result\n"
     else
-        health_info+="✗ MySQL Exporter: Unreachable\n"
+        health_info+="$mysql_exporter_result\n"
         all_healthy=false
     fi
     
-    # Check Vector
+    # Check Vector (internal only)
     dialog --stdout --infobox "Checking Vector (5/5)..." 5 50 2>&1 >/dev/null
-    sleep 0.5
-    if docker ps --format "{{.Names}}" | grep -q "^moad-vector$"; then
-        health_info+="✓ Vector: Running\n"
+    local vector_result
+    vector_result=$(check_container_health "moad-vector" "Vector")
+    if [ $? -eq 0 ]; then
+        health_info+="$vector_result\n"
     else
-        health_info+="✗ Vector: Not Running\n"
+        health_info+="$vector_result\n"
         all_healthy=false
     fi
     
@@ -1523,7 +1587,13 @@ check_service_health() {
         health_info+="Overall Status: Some services unhealthy ✗"
     fi
     
-    dialog --stdout --title "Service Health" --textbox <(echo -e "$health_info") 15 60 2>&1 >/dev/null
+    # Use temporary file for dialog textbox (cannot use process substitution)
+    local temp_file
+    temp_file=$(mktemp /tmp/moad-health-XXXXXX)
+    echo -e "$health_info" > "$temp_file"
+    
+    dialog --stdout --title "Service Health" --textbox "$temp_file" 15 60 2>&1 >/dev/null
+    rm -f "$temp_file"
 }
 
 test_mysql_connectivity() {
@@ -1550,10 +1620,18 @@ test_mysql_connectivity() {
     
     if [ $? -eq 0 ]; then
         local success_msg="MySQL Connection: SUCCESS\n\nHost: $mysql_host\nUser: $mysql_user\n\nConnection test passed."
-        dialog --stdout --title "MySQL Connectivity Test" --textbox <(echo -e "$success_msg") 10 60 2>&1 >/dev/null
+        local temp_file
+        temp_file=$(mktemp /tmp/moad-mysql-XXXXXX)
+        echo -e "$success_msg" > "$temp_file"
+        dialog --stdout --title "MySQL Connectivity Test" --textbox "$temp_file" 10 60 2>&1 >/dev/null
+        rm -f "$temp_file"
     else
         local error_msg="MySQL Connection: FAILED\n\nError details:\n$result\n\nPlease check:\n- MySQL host is correct\n- User credentials are correct\n- Network connectivity"
-        dialog --stdout --title "MySQL Connectivity Test" --textbox <(echo -e "$error_msg") 15 70 2>&1 >/dev/null
+        local temp_file
+        temp_file=$(mktemp /tmp/moad-mysql-XXXXXX)
+        echo -e "$error_msg" > "$temp_file"
+        dialog --stdout --title "MySQL Connectivity Test" --textbox "$temp_file" 15 70 2>&1 >/dev/null
+        rm -f "$temp_file"
     fi
 }
 
@@ -1571,7 +1649,11 @@ show_disk_usage() {
     info+="System:\n$disk_info\n\n"
     info+="Docker:\n$docker_info"
     
-    dialog --stdout --title "Disk Usage" --textbox <(echo -e "$info") 15 70 2>&1 >/dev/null
+    local temp_file
+    temp_file=$(mktemp /tmp/moad-disk-XXXXXX)
+    echo -e "$info" > "$temp_file"
+    dialog --stdout --title "Disk Usage" --textbox "$temp_file" 15 70 2>&1 >/dev/null
+    rm -f "$temp_file"
 }
 
 show_system_resources() {
@@ -1587,7 +1669,11 @@ show_system_resources() {
     info+="Memory: ${mem_info}\n"
     info+="Load Average: ${load_info}\n"
     
-    dialog --stdout --title "System Resources" --textbox <(echo -e "$info") 10 60 2>&1 >/dev/null
+    local temp_file
+    temp_file=$(mktemp /tmp/moad-resources-XXXXXX)
+    echo -e "$info" > "$temp_file"
+    dialog --stdout --title "System Resources" --textbox "$temp_file" 10 60 2>&1 >/dev/null
+    rm -f "$temp_file"
 }
 
 # ============================================================================
@@ -1600,12 +1686,14 @@ view_configuration_files() {
         "vector/vector.yml" "Vector log processing config"
         "prometheus/prometheus.yml" "Prometheus metrics config"
         "loki/loki-config.yml" "Loki log aggregation config"
+        "grafana/provisioning/datasources/datasources.yml" "Grafana datasources config"
+        "grafana/provisioning/dashboards/dashboards.yml" "Grafana dashboards config"
     )
     
     local selected
     local exit_code
     selected=$(dialog --stdout --title "View Configuration" \
-        --menu "Select a configuration file to view:" 12 60 5 \
+        --menu "Select a configuration file to view:" 15 60 7 \
         "${menu_items[@]}" 2>&1)
     exit_code=$?
     
@@ -1615,9 +1703,13 @@ view_configuration_files() {
     fi
     
     if [ -f "$selected" ]; then
-        local content
-        content=$(cat "$selected" 2>/dev/null || echo "Error reading file")
-        dialog --stdout --title "Config: $selected" --textbox <(echo "$content") 25 80 2>&1 >/dev/null
+        # Use temporary file for dialog textbox (cannot use process substitution)
+        local temp_file
+        temp_file=$(mktemp /tmp/moad-config-XXXXXX)
+        cat "$selected" > "$temp_file" 2>/dev/null || echo "Error reading file" > "$temp_file"
+        
+        dialog --stdout --title "Config: $selected" --textbox "$temp_file" 25 80 2>&1 >/dev/null
+        rm -f "$temp_file"
     else
         dialog --stdout --msgbox "File not found: $selected" 8 50 2>&1 >/dev/null
     fi

@@ -15,13 +15,18 @@ services:
       - moad-network
     depends_on:
       - loki
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "vector"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   # Loki - Log aggregation
   loki:
     image: grafana/loki:2.9.0
     container_name: moad-loki
-    ports:
-      - "3100:3100"
+    # No external ports - only accessible within Docker network
     volumes:
       - ./loki/loki-config.yml:/etc/loki/local-config.yaml:ro
       - loki-data:/loki
@@ -29,13 +34,18 @@ services:
     restart: unless-stopped
     networks:
       - moad-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   # Prometheus - Metrics collection
   prometheus:
     image: prom/prometheus:v2.48.0
     container_name: moad-prometheus
-    ports:
-      - "9090:9090"
+    # No external ports - only accessible within Docker network
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
@@ -49,6 +59,12 @@ services:
     restart: unless-stopped
     networks:
       - moad-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   # MySQL Exporter - Database metrics
   # Uses read-only user (configurable via MYSQL_MOAD_RO_USER) with access to:
@@ -65,11 +81,16 @@ services:
       DATA_SOURCE_NAME: "${MYSQL_MOAD_RO_USER}:${MYSQL_MOAD_RO_PASSWORD}@tcp(${MYSQL_HOST}:3306)/"
     env_file:
       - .env
-    ports:
-      - "9104:9104"
+    # No external ports - only accessible within Docker network
     restart: unless-stopped
     networks:
       - moad-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9104/metrics"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     # Note: MYSQL_HOST must be set in .env file (IP address or hostname of MySQL server)
     # Note: MYSQL_MOAD_RO_USER must be set in .env file (default: moad_ro)
     # Note: MYSQL_MOAD_RO_PASSWORD must be set in .env file
