@@ -1,0 +1,249 @@
+{
+  "dashboard": {
+    "title": "PermissionMan Analytics - Forms, Activity, Trends",
+    "tags": ["MOAD", "PermissionMan", "Analytics", "Business"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "PermissionMan Database Status",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "mysql_info_schema_table_rows{table_schema=\"permissionMan\"}",
+            "refId": "A",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "format": "table"
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "textMode": "auto"
+        },
+        "description": "PermissionMan database table row counts"
+      },
+      {
+        "id": 2,
+        "title": "Form Lifecycle - Distribution Status",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 6, "y": 0},
+        "targets": [
+          {
+            "expr": "mysql_info_schema_table_rows{table_schema=\"permissionMan\", table_name=\"FormDistribution\"}",
+            "refId": "A",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Form Distributions"
+          },
+          {
+            "expr": "mysql_info_schema_table_rows{table_schema=\"permissionMan\", table_name=\"UserForm\"}",
+            "refId": "B",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "User Forms"
+          }
+        ],
+        "description": "Form distribution and user form counts over time. Note: Uses table row counts as proxy for activity."
+      },
+      {
+        "id": 3,
+        "title": "Form Activity by Status",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 18, "y": 0},
+        "targets": [
+          {
+            "expr": "mysql_info_schema_table_rows{table_schema=\"permissionMan\", table_name=\"UserForm\"}",
+            "refId": "A",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Total User Forms"
+          }
+        ],
+        "description": "UserForm table growth. For detailed status breakdown, use MySQL datasource with: SELECT status, COUNT(*) FROM permissionMan.UserForm GROUP BY status"
+      },
+      {
+        "id": 4,
+        "title": "UserFormAudit Actions Over Time",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "mysql_info_schema_table_rows{table_schema=\"permissionMan\", table_name=\"UserFormAudit\"}",
+            "refId": "A",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Audit Records"
+          }
+        ],
+        "description": "UserFormAudit table growth indicates form activity volume. Correlate with application logs for action types."
+      },
+      {
+        "id": 5,
+        "title": "Email Notifications Queue",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "mysql_info_schema_table_rows{table_schema=\"permissionMan\", table_name=\"UserFormNotificationQueue\"}",
+            "refId": "A",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Notification Queue Size"
+          }
+        ],
+        "description": "Notification queue size. High values may indicate email delivery issues. Correlate with Postfix logs."
+      },
+      {
+        "id": 6,
+        "title": "Integration Task Activity",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "mysql_info_schema_table_rows{table_schema=\"permissionMan\", table_name=\"FullIntegrationTask\"}",
+            "refId": "A",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Full Integration Tasks"
+          },
+          {
+            "expr": "mysql_info_schema_table_rows{table_schema=\"permissionMan\", table_name=\"DeltaIntegrationTask\"}",
+            "refId": "B",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Delta Integration Tasks"
+          }
+        ],
+        "description": "Integration task table growth. Correlate with integration logs for timing and success rates."
+      },
+      {
+        "id": 7,
+        "title": "Form Events from Logs (PFM Application)",
+        "type": "logs",
+        "gridPos": {"h": 10, "w": 12, "x": 12, "y": 16},
+        "targets": [
+          {
+            "expr": "{app=\"PFM\", event_type=~\"form|permission|policy\"} | json",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"}
+          }
+        ],
+        "options": {
+          "dedupStrategy": "none",
+          "enableLogDetails": true,
+          "prettifyLogMessage": false,
+          "showCommonLabels": false,
+          "showLabels": false,
+          "showTime": true,
+          "sortOrder": "Descending",
+          "wrapLogMessage": false
+        },
+        "description": "Form-related events from PFM application logs. Extracted identifiers enable joins with permissionMan schema."
+      },
+      {
+        "id": 8,
+        "title": "Database Growth Trends",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "mysql_info_schema_table_rows{table_schema=\"permissionMan\", table_name=\"Form\"}",
+            "refId": "A",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Forms"
+          },
+          {
+            "expr": "mysql_info_schema_table_rows{table_schema=\"permissionMan\", table_name=\"User\"}",
+            "refId": "B",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Users"
+          },
+          {
+            "expr": "mysql_info_schema_table_rows{table_schema=\"permissionMan\", table_name=\"Student\"}",
+            "refId": "C",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Students"
+          },
+          {
+            "expr": "mysql_info_schema_table_rows{table_schema=\"permissionMan\", table_name=\"District\"}",
+            "refId": "D",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Districts"
+          },
+          {
+            "expr": "mysql_info_schema_table_rows{table_schema=\"permissionMan\", table_name=\"School\"}",
+            "refId": "E",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Schools"
+          }
+        ],
+        "description": "Core entity growth trends in permissionMan database."
+      },
+      {
+        "id": 9,
+        "title": "Form Activity Rate (from Logs)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+        "targets": [
+          {
+            "expr": "sum(rate({app=\"PFM\", event_type=~\"form|permission\"} | json [5m]))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "Form Events/sec"
+          }
+        ],
+        "description": "Form-related event rate from PFM application logs. Correlates with database activity."
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "district_id",
+          "type": "query",
+          "datasource": {"type": "mysql", "uid": "MySQL"},
+          "query": "SELECT id, name FROM permissionMan.District ORDER BY name",
+          "current": {
+            "value": "",
+            "text": "All"
+          },
+          "includeAll": true,
+          "multi": true,
+          "allValue": null
+        },
+        {
+          "name": "school_id",
+          "type": "query",
+          "datasource": {"type": "mysql", "uid": "MySQL"},
+          "query": "SELECT id, name FROM permissionMan.School WHERE districtId = $district_id ORDER BY name",
+          "current": {
+            "value": "",
+            "text": "All"
+          },
+          "includeAll": true,
+          "multi": true,
+          "allValue": null,
+          "refresh": 1
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "High Notification Queue",
+          "datasource": {"type": "prometheus", "uid": "Prometheus"},
+          "enable": true,
+          "expr": "mysql_info_schema_table_rows{table_schema=\"permissionMan\", table_name=\"UserFormNotificationQueue\"} > 1000",
+          "iconColor": "orange",
+          "title": "Notification Queue > 1000"
+        }
+      ]
+    },
+    "note": "This dashboard uses MySQL exporter metrics for table row counts. For detailed analytics (e.g., forms by status, per-school breakdowns), use the MySQL datasource with read-only queries. Per non-goals, avoid time-series queries from MySQL - use metrics and logs instead."
+  }
+}
+

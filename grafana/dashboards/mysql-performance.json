@@ -1,0 +1,267 @@
+{
+  "dashboard": {
+    "title": "MySQL Performance - InnoDB, Queries, Locks",
+    "tags": ["MOAD", "MySQL", "Performance", "Infrastructure"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "MySQL Up Status",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "mysql_up",
+            "refId": "A",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"}
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "textMode": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Threads Connected",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 9, "x": 6, "y": 0},
+        "targets": [
+          {
+            "expr": "mysql_global_status_threads_connected",
+            "refId": "A",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Connected"
+          },
+          {
+            "expr": "mysql_global_variables_max_connections",
+            "refId": "B",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Max Connections"
+          }
+        ],
+        "description": "Monitor connection saturation. Alert if approaching max_connections."
+      },
+      {
+        "id": 3,
+        "title": "Threads Running",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 9, "x": 15, "y": 0},
+        "targets": [
+          {
+            "expr": "mysql_global_status_threads_running",
+            "refId": "A",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Running"
+          }
+        ],
+        "description": "Active query threads. High values indicate query backlog."
+      },
+      {
+        "id": 4,
+        "title": "InnoDB Buffer Pool Utilization",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "mysql_global_status_innodb_buffer_pool_bytes_data / mysql_global_variables_innodb_buffer_pool_size * 100",
+            "refId": "A",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Data Used %"
+          },
+          {
+            "expr": "mysql_global_status_innodb_buffer_pool_bytes_free / mysql_global_variables_innodb_buffer_pool_size * 100",
+            "refId": "B",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Free %"
+          }
+        ],
+        "description": "Buffer pool utilization. High usage may indicate need for larger buffer pool."
+      },
+      {
+        "id": 5,
+        "title": "InnoDB Buffer Pool Hit Ratio",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "(mysql_global_status_innodb_buffer_pool_read_requests / (mysql_global_status_innodb_buffer_pool_read_requests + mysql_global_status_innodb_buffer_pool_reads)) * 100",
+            "refId": "A",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Hit Ratio %"
+          }
+        ],
+        "description": "Buffer pool hit ratio. Should be >99%. Lower values indicate insufficient buffer pool size."
+      },
+      {
+        "id": 6,
+        "title": "Query Latency (p95 / p99)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(mysql_global_status_commands_total{command=\"select\"}[5m]))",
+            "refId": "A",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "p95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(mysql_global_status_commands_total{command=\"select\"}[5m]))",
+            "refId": "B",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "p99"
+          },
+          {
+            "expr": "rate(mysql_global_status_slow_queries[5m])",
+            "refId": "C",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Slow Queries/sec"
+          }
+        ],
+        "description": "Query latency percentiles and slow query rate."
+      },
+      {
+        "id": 7,
+        "title": "InnoDB Row Lock Waits",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "targets": [
+          {
+            "expr": "rate(mysql_global_status_innodb_row_lock_waits[5m])",
+            "refId": "A",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Lock Waits/sec"
+          },
+          {
+            "expr": "rate(mysql_global_status_innodb_row_lock_time[5m])",
+            "refId": "B",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Lock Time (ms/sec)"
+          }
+        ],
+        "description": "InnoDB row lock contention. High values indicate transaction conflicts."
+      },
+      {
+        "id": 8,
+        "title": "Queries Per Second",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "rate(mysql_global_status_queries[5m])",
+            "refId": "A",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Queries/sec"
+          },
+          {
+            "expr": "rate(mysql_global_status_questions[5m])",
+            "refId": "B",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Questions/sec"
+          }
+        ],
+        "description": "Overall query throughput."
+      },
+      {
+        "id": 9,
+        "title": "Table Open Cache Hit Ratio",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+        "targets": [
+          {
+            "expr": "(mysql_global_status_open_tables / (mysql_global_status_open_tables + mysql_global_status_opened_tables)) * 100",
+            "refId": "A",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Cache Hit Ratio %"
+          }
+        ],
+        "description": "Table open cache efficiency. Low values may indicate need to increase table_open_cache."
+      },
+      {
+        "id": 10,
+        "title": "Connection Errors",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32},
+        "targets": [
+          {
+            "expr": "rate(mysql_global_status_aborted_connects[5m])",
+            "refId": "A",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Aborted Connects/sec"
+          },
+          {
+            "expr": "rate(mysql_global_status_aborted_clients[5m])",
+            "refId": "B",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Aborted Clients/sec"
+          }
+        ],
+        "description": "Connection errors may indicate network issues or authentication problems."
+      },
+      {
+        "id": 11,
+        "title": "Schema and Table Growth",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32},
+        "targets": [
+          {
+            "expr": "mysql_info_schema_table_rows{table_schema=\"schoolsoft\"}",
+            "refId": "A",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "{{table_name}} (schoolsoft)"
+          },
+          {
+            "expr": "mysql_info_schema_table_rows{table_schema=\"permissionMan\"}",
+            "refId": "B",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "{{table_name}} (permissionMan)"
+          }
+        ],
+        "description": "Table row counts over time. Monitor for growth trends."
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "name": "High Connection Usage",
+          "datasource": {"type": "prometheus", "uid": "Prometheus"},
+          "enable": true,
+          "expr": "mysql_global_status_threads_connected / mysql_global_variables_max_connections > 0.8",
+          "iconColor": "red",
+          "title": "Connection Usage > 80%"
+        },
+        {
+          "name": "Low Buffer Pool Hit Ratio",
+          "datasource": {"type": "prometheus", "uid": "Prometheus"},
+          "enable": true,
+          "expr": "(mysql_global_status_innodb_buffer_pool_read_requests / (mysql_global_status_innodb_buffer_pool_read_requests + mysql_global_status_innodb_buffer_pool_reads)) * 100 < 95",
+          "iconColor": "orange",
+          "title": "Buffer Pool Hit Ratio < 95%"
+        }
+      ]
+    }
+  }
+}
+

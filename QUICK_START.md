@@ -20,10 +20,12 @@ cd ss-moad
 # Create .env file
 cat > .env << EOF
 GRAFANA_ADMIN_PASSWORD=your_secure_password_here
-MYSQL_EXPORTER_PASSWORD=your_mysql_exporter_password
+MYSQL_MOAD_RO_PASSWORD=your_moad_ro_password
 MYSQL_GRAFANA_PASSWORD=your_grafana_readonly_password
 EOF
 ```
+
+**Note:** `MYSQL_MOAD_RO_PASSWORD` is for the `moad_ro` MySQL user (read-only access to schoolsoft and permissionMan databases).
 
 ## 3. Update MySQL Host
 

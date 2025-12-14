@@ -186,6 +186,33 @@ transforms:
         .student_id = match(.message, r'(?:student|studentId)[\s:=]+(\d+)') ?? null
       }
       
+      # PermissionMan form events (CM may also handle forms)
+      if match(.message, r'(?i)(form|permission|userform|formdistribution|formaudit)') {
+        .event_type = "form"
+        .event_category = "business"
+        
+        .form_id = match(.message, r'(?:form|formId)[\s:=]+(\d+)') ?? null
+        .user_form_id = match(.message, r'(?:userform|userFormId)[\s:=]+(\d+)') ?? null
+        .user_id = match(.message, r'(?:user|userId)[\s:=]+(\d+)') ?? null
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
+        .district_id = match(.message, r'(?:district|districtId)[\s:=]+(\d+)') ?? null
+        .student_id = match(.message, r'(?:student|studentId)[\s:=]+(\d+)') ?? null
+        .form_action = match(.message, r'(?i)(distributed|completed|submitted|expired|archived|created|updated|deleted)') ?? null
+        .form_status = match(.message, r'(?:status|formStatus)[\s:=]+([a-zA-Z0-9_-]+)') ?? null
+      }
+      
+      # Integration task events
+      if match(.message, r'(?i)(integrationtask|fullintegration|deltaintegration|sistask)') {
+        .event_type = "integration_task"
+        .event_category = "integration"
+        
+        .integration_task_id = match(.message, r'(?:task|taskId|integrationTaskId)[\s:=]+(\d+)') ?? null
+        .integration_type = match(.message, r'(?i)(full|delta|incremental)') ?? null
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
+        .district_id = match(.message, r'(?:district|districtId)[\s:=]+(\d+)') ?? null
+        .integration_status = match(.message, r'(?i)(success|failed|error|completed|running|pending)') ?? null
+      }
+      
       # Ensure all IDs are integers (for MySQL join compatibility)
       if .user_id {
         .user_id = to_int(.user_id) ?? null
@@ -198,6 +225,18 @@ transforms:
       }
       if .student_ids {
         .student_ids = map(.student_ids, |id| { to_int(id) ?? null })
+      }
+      if .form_id {
+        .form_id = to_int(.form_id) ?? null
+      }
+      if .user_form_id {
+        .user_form_id = to_int(.user_form_id) ?? null
+      }
+      if .district_id {
+        .district_id = to_int(.district_id) ?? null
+      }
+      if .integration_task_id {
+        .integration_task_id = to_int(.integration_task_id) ?? null
       }
       
       # Add metadata
@@ -276,6 +315,38 @@ transforms:
         .student_id = match(.message, r'(?:student|studentId)[\s:=]+(\d+)') ?? null
       }
       
+      # PermissionMan form events (PFM application)
+      if match(.message, r'(?i)(form|permission|userform|formdistribution|formaudit)') {
+        .event_type = "form"
+        .event_category = "business"
+        
+        # Extract form-related identifiers
+        .form_id = match(.message, r'(?:form|formId)[\s:=]+(\d+)') ?? null
+        .user_form_id = match(.message, r'(?:userform|userFormId)[\s:=]+(\d+)') ?? null
+        .user_id = match(.message, r'(?:user|userId)[\s:=]+(\d+)') ?? null
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
+        .district_id = match(.message, r'(?:district|districtId)[\s:=]+(\d+)') ?? null
+        .student_id = match(.message, r'(?:student|studentId)[\s:=]+(\d+)') ?? null
+        
+        # Form action types
+        .form_action = match(.message, r'(?i)(distributed|completed|submitted|expired|archived|created|updated|deleted)') ?? null
+        
+        # Form status
+        .form_status = match(.message, r'(?:status|formStatus)[\s:=]+([a-zA-Z0-9_-]+)') ?? null
+      }
+      
+      # Integration task events (FullIntegrationTask, DeltaIntegrationTask)
+      if match(.message, r'(?i)(integrationtask|fullintegration|deltaintegration|sistask)') {
+        .event_type = "integration_task"
+        .event_category = "integration"
+        
+        .integration_task_id = match(.message, r'(?:task|taskId|integrationTaskId)[\s:=]+(\d+)') ?? null
+        .integration_type = match(.message, r'(?i)(full|delta|incremental)') ?? null
+        .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)') ?? null
+        .district_id = match(.message, r'(?:district|districtId)[\s:=]+(\d+)') ?? null
+        .integration_status = match(.message, r'(?i)(success|failed|error|completed|running|pending)') ?? null
+      }
+      
       if .user_id {
         .user_id = to_int(.user_id) ?? null
       }
@@ -287,6 +358,18 @@ transforms:
       }
       if .student_ids {
         .student_ids = map(.student_ids, |id| { to_int(id) ?? null })
+      }
+      if .form_id {
+        .form_id = to_int(.form_id) ?? null
+      }
+      if .user_form_id {
+        .user_form_id = to_int(.user_form_id) ?? null
+      }
+      if .district_id {
+        .district_id = to_int(.district_id) ?? null
+      }
+      if .integration_task_id {
+        .integration_task_id = to_int(.integration_task_id) ?? null
       }
       
       .source_component = "tomcat"
@@ -505,22 +588,54 @@ transforms:
         .mysql_join_student_id = to_int(.student_id) ?? null
       }
       
+      # PermissionMan-specific identifiers
+      if .form_id {
+        .mysql_join_form_id = to_int(.form_id) ?? null
+      }
+      if .user_form_id {
+        .mysql_join_user_form_id = to_int(.user_form_id) ?? null
+      }
+      if .district_id {
+        .mysql_join_district_id = to_int(.district_id) ?? null
+      }
+      if .integration_task_id {
+        .mysql_join_integration_task_id = to_int(.integration_task_id) ?? null
+      }
+      
       # Add join hints for Grafana queries
       .mysql_joins = []
       if .mysql_join_user_id {
         .mysql_joins = append(.mysql_joins, "users.id")
+        .mysql_joins = append(.mysql_joins, "permissionMan.User.id")
       }
       if .mysql_join_user_name {
         .mysql_joins = append(.mysql_joins, "users.userName")
+        .mysql_joins = append(.mysql_joins, "permissionMan.User.userName")
       }
       if .mysql_join_user_email {
         .mysql_joins = append(.mysql_joins, "users.email")
+        .mysql_joins = append(.mysql_joins, "permissionMan.User.email")
       }
       if .mysql_join_school_id {
         .mysql_joins = append(.mysql_joins, "schools.id")
+        .mysql_joins = append(.mysql_joins, "permissionMan.School.id")
       }
       if .mysql_join_student_id {
         .mysql_joins = append(.mysql_joins, "students.id")
+        .mysql_joins = append(.mysql_joins, "permissionMan.Student.id")
+      }
+      if .mysql_join_form_id {
+        .mysql_joins = append(.mysql_joins, "permissionMan.Form.id")
+      }
+      if .mysql_join_user_form_id {
+        .mysql_joins = append(.mysql_joins, "permissionMan.UserForm.id")
+      }
+      if .mysql_join_district_id {
+        .mysql_joins = append(.mysql_joins, "permissionMan.District.id")
+      }
+      if .mysql_join_integration_task_id {
+        .mysql_joins = append(.mysql_joins, "permissionMan.FullIntegrationTask.id")
+        .mysql_joins = append(.mysql_joins, "permissionMan.DeltaIntegrationTask.id")
       }
       
       # Standardize timestamp format

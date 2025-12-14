@@ -17,7 +17,7 @@ A unified observability and analytics platform for SchoolSoft operations, provid
 - **Vector**: Log ingestion, multiline reconstruction, field extraction, event classification, JSON normalization
 - **Loki**: Log aggregation and storage
 - **Prometheus**: Metrics collection
-- **MySQL Exporter**: Database metrics (critical for correlation)
+- **MySQL Exporter**: Database metrics for `schoolsoft` and `permissionMan` databases (critical for correlation)
 - **Grafana**: Visualization and dashboards
 
 ### Deployment
@@ -63,6 +63,18 @@ See [docs/JOIN_COMPATIBILITY.md](docs/JOIN_COMPATIBILITY.md) for detailed design
   - HAProxy: `/data/moad/logs/app2/var/log/haproxy.log`
   - Mail: `/data/moad/logs/app2/var/log/mail.log`
 
+## MySQL Monitoring
+
+MOAD includes comprehensive MySQL observability for both `schoolsoft` and `permissionMan` databases:
+
+- **Performance Monitoring**: InnoDB buffer pool, query latency, lock contention, connection saturation
+- **Application Analytics**: Form lifecycle, per-school activity, integration task timing, growth trends
+- **Correlation**: Database performance correlated with application logs and user activity
+
+**MySQL User:** `moad_ro` (read-only, least privilege)
+
+See [docs/MYSQL_MONITORING.md](docs/MYSQL_MONITORING.md) for detailed documentation.
+
 ## Event Taxonomy
 
 ### Authentication Events
@@ -84,6 +96,17 @@ See [docs/JOIN_COMPATIBILITY.md](docs/JOIN_COMPATIBILITY.md) for detailed design
 - **Source**: HAProxy
 - **Identifiers**: `school_subdomain`, `school_id`, `client_ip`
 - **Join Path**: `schools.subdomain` → `schools.id`
+
+### Form Events (PermissionMan)
+- **Source**: Tomcat (PFM, CM)
+- **Identifiers**: `form_id`, `user_form_id`, `user_id`, `school_id`, `district_id`, `student_id`
+- **Join Path**: `permissionMan.Form.id`, `permissionMan.UserForm.id`, `permissionMan.User.id`, etc.
+- **Actions**: distributed, completed, submitted, expired, archived
+
+### Integration Task Events
+- **Source**: Tomcat
+- **Identifiers**: `integration_task_id`, `integration_type`, `school_id`, `district_id`
+- **Join Path**: `permissionMan.FullIntegrationTask.id`, `permissionMan.DeltaIntegrationTask.id`
 
 ## Quick Start
 
@@ -128,6 +151,7 @@ docker-compose up -d
 
 - [JOIN_COMPATIBILITY.md](docs/JOIN_COMPATIBILITY.md): Detailed design of join compatibility
 - [SCHEMA_MAPPING.md](docs/SCHEMA_MAPPING.md): Complete mapping of log fields to MySQL columns
+- [MYSQL_MONITORING.md](docs/MYSQL_MONITORING.md): MySQL performance and application analytics
 
 ## Success Criteria
 

@@ -1,0 +1,228 @@
+{
+  "dashboard": {
+    "title": "MOAD Correlation - Logs, DB Performance, User Activity",
+    "tags": ["MOAD", "Correlation", "Root Cause Analysis"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Authentication Failures vs MySQL Threads",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(rate({event_type=\"authentication\", auth_result=\"failed\"} | json [5m]))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "Auth Failures/sec"
+          },
+          {
+            "expr": "mysql_global_status_threads_connected",
+            "refId": "B",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "MySQL Connections"
+          },
+          {
+            "expr": "mysql_global_status_threads_running",
+            "refId": "C",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "MySQL Running Threads"
+          }
+        ],
+        "description": "Correlate authentication failures with database connection pressure. High failures during high connection counts may indicate DB saturation."
+      },
+      {
+        "id": 2,
+        "title": "Application Requests vs MySQL Query Rate",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(rate({event_type=\"http_traffic\"} | json [5m]))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "HTTP Requests/sec"
+          },
+          {
+            "expr": "rate(mysql_global_status_queries[5m])",
+            "refId": "B",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "MySQL Queries/sec"
+          }
+        ],
+        "description": "Application request rate correlated with database query rate. Helps identify query-heavy endpoints."
+      },
+      {
+        "id": 3,
+        "title": "PowerSchool Integration vs Slow Queries",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "sum(rate({event_type=\"powerschool_integration\"} | json [5m]))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "PowerSchool Events/sec"
+          },
+          {
+            "expr": "rate(mysql_global_status_slow_queries[5m])",
+            "refId": "B",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Slow Queries/sec"
+          },
+          {
+            "expr": "rate(mysql_global_status_innodb_row_lock_waits[5m])",
+            "refId": "C",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Row Lock Waits/sec"
+          }
+        ],
+        "description": "PowerSchool integration activity correlated with database performance. Integration tasks may cause slow queries or lock contention."
+      },
+      {
+        "id": 4,
+        "title": "Form Activity vs Database Load",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "sum(rate({app=\"PFM\", event_type=~\"form|permission\"} | json [5m]))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "Form Events/sec (PFM)"
+          },
+          {
+            "expr": "mysql_global_status_threads_running",
+            "refId": "B",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "MySQL Running Threads"
+          },
+          {
+            "expr": "rate(mysql_global_status_innodb_row_lock_waits[5m])",
+            "refId": "C",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Lock Waits/sec"
+          }
+        ],
+        "description": "PermissionMan form activity correlated with database load. High form activity may cause lock contention."
+      },
+      {
+        "id": 5,
+        "title": "Email Delivery vs Notification Queue",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "sum(rate({event_type=\"email\", email_outcome=\"sent\"} | json [5m]))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "Emails Sent/sec"
+          },
+          {
+            "expr": "sum(rate({event_type=\"email\", email_outcome=\"bounced\"} | json [5m]))",
+            "refId": "B",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "Emails Bounced/sec"
+          },
+          {
+            "expr": "mysql_info_schema_table_rows{table_schema=\"permissionMan\", table_name=\"UserFormNotificationQueue\"}",
+            "refId": "C",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Notification Queue Size"
+          }
+        ],
+        "description": "Email delivery rate correlated with notification queue size. High queue with low delivery may indicate email issues."
+      },
+      {
+        "id": 6,
+        "title": "Conference Activity vs Database Connections",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "targets": [
+          {
+            "expr": "sum(rate({app=\"CM\", event_type=\"conference\"} | json [5m]))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "Conference Events/sec (CM)"
+          },
+          {
+            "expr": "mysql_global_status_threads_connected",
+            "refId": "B",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "MySQL Connections"
+          }
+        ],
+        "description": "Conference Manager activity correlated with database connections. Booking spikes may increase connection usage."
+      },
+      {
+        "id": 7,
+        "title": "InnoDB Buffer Pool Hit Ratio vs Query Rate",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "(mysql_global_status_innodb_buffer_pool_read_requests / (mysql_global_status_innodb_buffer_pool_read_requests + mysql_global_status_innodb_buffer_pool_reads)) * 100",
+            "refId": "A",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Buffer Pool Hit Ratio %"
+          },
+          {
+            "expr": "rate(mysql_global_status_queries[5m])",
+            "refId": "B",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "Queries/sec"
+          }
+        ],
+        "description": "Buffer pool efficiency vs query rate. Low hit ratio during high query rate indicates insufficient buffer pool."
+      },
+      {
+        "id": 8,
+        "title": "Root Cause Analysis - Event Timeline",
+        "type": "logs",
+        "gridPos": {"h": 10, "w": 24, "x": 0, "y": 32},
+        "targets": [
+          {
+            "expr": "{event_type=~\"authentication|powerschool_integration|email|conference|form\"} | json | mysql_joins != \"\"",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"}
+          }
+        ],
+        "options": {
+          "dedupStrategy": "none",
+          "enableLogDetails": true,
+          "prettifyLogMessage": false,
+          "showCommonLabels": true,
+          "showLabels": true,
+          "showTime": true,
+          "sortOrder": "Descending",
+          "wrapLogMessage": false
+        },
+        "description": "Unified event timeline with join-compatible identifiers. Enables correlation across application, infrastructure, and data layers."
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "name": "Database Saturation",
+          "datasource": {"type": "prometheus", "uid": "Prometheus"},
+          "enable": true,
+          "expr": "mysql_global_status_threads_connected / mysql_global_variables_max_connections > 0.9",
+          "iconColor": "red",
+          "title": "MySQL Connections > 90%"
+        },
+        {
+          "name": "High Lock Contention",
+          "datasource": {"type": "prometheus", "uid": "Prometheus"},
+          "enable": true,
+          "expr": "rate(mysql_global_status_innodb_row_lock_waits[5m]) > 10",
+          "iconColor": "orange",
+          "title": "Lock Waits > 10/sec"
+        }
+      ]
+    }
+  }
+}
+

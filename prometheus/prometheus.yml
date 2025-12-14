@@ -23,15 +23,21 @@ scrape_configs:
       - targets: ['localhost:9090']
 
   # MySQL Exporter - Critical for MOAD
+  # Monitors both schoolsoft and permissionMan databases
   - job_name: 'mysql'
     static_configs:
       - targets: ['mysqld-exporter:9104']
+        labels:
+          database_cluster: 'schoolsoft'
+          databases: 'schoolsoft,permissionMan'
     scrape_interval: 30s
     metrics_path: /metrics
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance
-        replacement: 'mysql-schoolsoft'
+        replacement: 'mysql-moad'
+      - target_label: exporter_type
+        replacement: 'mysqld'
 
   # Vector metrics (if enabled)
   - job_name: 'vector'

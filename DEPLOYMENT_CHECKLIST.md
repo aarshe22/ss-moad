@@ -19,9 +19,16 @@
 Create `.env` file with:
 ```bash
 GRAFANA_ADMIN_PASSWORD=<secure_password>
-MYSQL_EXPORTER_PASSWORD=<mysql_exporter_password>
+MYSQL_MOAD_RO_PASSWORD=<moad_ro_password>
 MYSQL_GRAFANA_PASSWORD=<grafana_readonly_password>
 ```
+
+**Note:** `MYSQL_MOAD_RO_PASSWORD` is for the `moad_ro` MySQL user which has:
+- `SELECT ON schoolsoft.*`
+- `SELECT ON permissionMan.*`
+- `SELECT ON performance_schema.*`
+- `SELECT ON information_schema.*`
+- No write access, no system database access
 
 #### 2. Log Directory Access
 Ensure `/data/moad/logs` is accessible:
@@ -38,8 +45,13 @@ Ensure `/data/moad/logs` is accessible:
 #### 3. MySQL Database Access
 - MySQL host accessible from `mysqld-exporter` container
 - Update `docker-compose.yml` line 56: Replace `mysql-host` with actual hostname/IP
-- MySQL exporter user exists with proper permissions
-- Database `schoolsoft` exists
+- MySQL user `moad_ro` exists with read-only permissions:
+  - `SELECT ON schoolsoft.*`
+  - `SELECT ON permissionMan.*`
+  - `SELECT ON performance_schema.*`
+  - `SELECT ON information_schema.*`
+- Databases `schoolsoft` and `permissionMan` exist
+- `performance_schema` is enabled in MySQL
 
 #### 4. Network Configuration
 - Ports available: 3000, 3100, 9090, 9104
