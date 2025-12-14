@@ -76,8 +76,8 @@ transforms:
       # Ensure .message is a string for all operations
       .message = string!(.message)
       
-      # Parse timestamp
-      .timestamp = parse_timestamp!(.message, format: "%Y-%m-%d %H:%M:%S") ?? now()
+      # Parse timestamp (use parse_timestamp without ! to allow fallback)
+      .timestamp = parse_timestamp(.message, format: "%Y-%m-%d %H:%M:%S") ?? now()
       
       # Extract log level
       if match(.message, r'ERROR') {
@@ -119,7 +119,10 @@ transforms:
         .client_ip = match(.message, r'\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b')
         
         # Auth result (success/failed)
-        .auth_result = match(.message, r'(?i)(success|successful|failed|failure|denied|invalid)') ?? "unknown"
+        .auth_result = match(.message, r'(?i)(success|successful|failed|failure|denied|invalid)')
+        if is_null(.auth_result) {
+          .auth_result = "unknown"
+        }
         if match(.auth_result, r'(?i)(success|successful)') {
           .auth_result = "success"
         } else if match(.auth_result, r'(?i)(failed|failure|denied|invalid)') {
@@ -157,7 +160,10 @@ transforms:
         .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)')
         
         # Integration status
-        .integration_status = match(.message, r'(?i)(success|failed|error|completed)') ?? "unknown"
+        .integration_status = match(.message, r'(?i)(success|failed|error|completed)')
+        if is_null(.integration_status) {
+          .integration_status = "unknown"
+        }
       }
       
       # Conference events
@@ -214,13 +220,13 @@ transforms:
       
       # Ensure all IDs are integers (for MySQL join compatibility)
       if !is_null(.user_id) {
-        .user_id = to_int(.user_id) ?? null
+        .user_id = to_int(.user_id)
       }
       if !is_null(.school_id) {
-        .school_id = to_int(.school_id) ?? null
+        .school_id = to_int(.school_id)
       }
       if !is_null(.student_id) {
-        .student_id = to_int(.student_id) ?? null
+        .student_id = to_int(.student_id)
       }
       # Convert student_ids array elements to integers (Vector 0.38.0 doesn't support map closures)
       # For now, keep as strings - they'll be converted during join operations if needed
@@ -228,16 +234,16 @@ transforms:
       #   .student_ids = map(.student_ids, |id| { to_int(id) ?? null })
       # }
       if !is_null(.form_id) {
-        .form_id = to_int(.form_id) ?? null
+        .form_id = to_int(.form_id)
       }
       if !is_null(.user_form_id) {
-        .user_form_id = to_int(.user_form_id) ?? null
+        .user_form_id = to_int(.user_form_id)
       }
       if !is_null(.district_id) {
-        .district_id = to_int(.district_id) ?? null
+        .district_id = to_int(.district_id)
       }
       if !is_null(.integration_task_id) {
-        .integration_task_id = to_int(.integration_task_id) ?? null
+        .integration_task_id = to_int(.integration_task_id)
       }
       
       # Add metadata
@@ -253,7 +259,7 @@ transforms:
       .message = string!(.message)
       
       # Same parsing logic as CM
-      .timestamp = parse_timestamp!(.message, format: "%Y-%m-%d %H:%M:%S") ?? now()
+      .timestamp = parse_timestamp(.message, format: "%Y-%m-%d %H:%M:%S") ?? now()
       # Extract log level
       if match(.message, r'ERROR') {
         .level = "error"
@@ -282,7 +288,10 @@ transforms:
           .email = downcase(string!(.email))
         }
         .client_ip = match(.message, r'\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b')
-        .auth_result = match(.message, r'(?i)(success|successful|failed|failure|denied|invalid)') ?? "unknown"
+        .auth_result = match(.message, r'(?i)(success|successful|failed|failure|denied|invalid)')
+        if is_null(.auth_result) {
+          .auth_result = "unknown"
+        }
         if match(.auth_result, r'(?i)(success|successful)') {
           .auth_result = "success"
         } else if match(.auth_result, r'(?i)(failed|failure|denied|invalid)') {
@@ -307,7 +316,10 @@ transforms:
           .student_ids = []
         }
         .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)')
-        .integration_status = match(.message, r'(?i)(success|failed|error|completed)') ?? "unknown"
+        .integration_status = match(.message, r'(?i)(success|failed|error|completed)')
+        if is_null(.integration_status) {
+          .integration_status = "unknown"
+        }
       }
       
       if match(.message, r'(?i)(conference|round|schedule|timeslot)') {
@@ -359,13 +371,13 @@ transforms:
       }
       
       if !is_null(.user_id) {
-        .user_id = to_int(.user_id) ?? null
+        .user_id = to_int(.user_id)
       }
       if !is_null(.school_id) {
-        .school_id = to_int(.school_id) ?? null
+        .school_id = to_int(.school_id)
       }
       if !is_null(.student_id) {
-        .student_id = to_int(.student_id) ?? null
+        .student_id = to_int(.student_id)
       }
       # Convert student_ids array elements to integers (Vector 0.38.0 doesn't support map closures)
       # For now, keep as strings - they'll be converted during join operations if needed
@@ -373,16 +385,16 @@ transforms:
       #   .student_ids = map(.student_ids, |id| { to_int(id) ?? null })
       # }
       if !is_null(.form_id) {
-        .form_id = to_int(.form_id) ?? null
+        .form_id = to_int(.form_id)
       }
       if !is_null(.user_form_id) {
-        .user_form_id = to_int(.user_form_id) ?? null
+        .user_form_id = to_int(.user_form_id)
       }
       if !is_null(.district_id) {
-        .district_id = to_int(.district_id) ?? null
+        .district_id = to_int(.district_id)
       }
       if !is_null(.integration_task_id) {
-        .integration_task_id = to_int(.integration_task_id) ?? null
+        .integration_task_id = to_int(.integration_task_id)
       }
       
       .source_component = "tomcat"
@@ -409,7 +421,7 @@ transforms:
       .school_subdomain = match(.http_path, r'/([a-z0-9-]+)/')
       .school_id = match(.http_path, r'(?:school|schoolId)[\s:=/]+(\d+)')
       if !is_null(.school_id) {
-        .school_id = to_int(.school_id) ?? null
+        .school_id = to_int(.school_id)
       }
       
       # Device classification
@@ -462,7 +474,7 @@ transforms:
       .school_subdomain = match(.http_path, r'/([a-z0-9-]+)/')
       .school_id = match(.http_path, r'(?:school|schoolId)[\s:=/]+(\d+)')
       if !is_null(.school_id) {
-        .school_id = to_int(.school_id) ?? null
+        .school_id = to_int(.school_id)
       }
       .device = "unknown"
       if match(.user_agent, r'(?i)(mobile|android|iphone|ipad)') {
@@ -497,7 +509,7 @@ transforms:
     inputs:
       - mail_cm
     source: |
-      .timestamp = parse_timestamp!(.message, format: "%b %d %H:%M:%S") ?? now()
+      .timestamp = parse_timestamp(.message, format: "%b %d %H:%M:%S") ?? now()
       
       # Extract email outcome
       .event_type = "email"
@@ -539,7 +551,7 @@ transforms:
     inputs:
       - mail_pfm
     source: |
-      .timestamp = parse_timestamp!(.message, format: "%b %d %H:%M:%S") ?? now()
+      .timestamp = parse_timestamp(.message, format: "%b %d %H:%M:%S") ?? now()
       .event_type = "email"
       .event_category = "communication"
       .recipient_email = match(.message, r'to=<([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>')
@@ -592,27 +604,27 @@ transforms:
       
       # ID fields (ensure integer type for MySQL joins)
       if !is_null(.user_id) {
-        .mysql_join_user_id = to_int(.user_id) ?? null
+        .mysql_join_user_id = to_int(.user_id)
       }
       if !is_null(.school_id) {
-        .mysql_join_school_id = to_int(.school_id) ?? null
+        .mysql_join_school_id = to_int(.school_id)
       }
       if !is_null(.student_id) {
-        .mysql_join_student_id = to_int(.student_id) ?? null
+        .mysql_join_student_id = to_int(.student_id)
       }
       
       # PermissionMan-specific identifiers
       if !is_null(.form_id) {
-        .mysql_join_form_id = to_int(.form_id) ?? null
+        .mysql_join_form_id = to_int(.form_id)
       }
       if !is_null(.user_form_id) {
-        .mysql_join_user_form_id = to_int(.user_form_id) ?? null
+        .mysql_join_user_form_id = to_int(.user_form_id)
       }
       if !is_null(.district_id) {
-        .mysql_join_district_id = to_int(.district_id) ?? null
+        .mysql_join_district_id = to_int(.district_id)
       }
       if !is_null(.integration_task_id) {
-        .mysql_join_integration_task_id = to_int(.integration_task_id) ?? null
+        .mysql_join_integration_task_id = to_int(.integration_task_id)
       }
       
       # Add join hints for Grafana queries
