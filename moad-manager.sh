@@ -1453,12 +1453,13 @@ show_service_urls() {
     local grafana_pass
     grafana_pass=$(read_env_value "GRAFANA_ADMIN_PASSWORD")
     
+    # First show all service URLs
     local info="MOAD Service URLs:\n\n"
     info+="Grafana (Visualization):\n"
     info+="  URL: ${GRAFANA_URL}\n"
     info+="  Username: admin\n"
     if [ -n "$grafana_pass" ]; then
-        info+="  Password: ${grafana_pass}\n"
+        info+="  Password: (see next dialog for easy copy)\n"
     else
         info+="  Password: (check .env file)\n"
     fi
@@ -1478,9 +1479,17 @@ show_service_urls() {
     local temp_file
     temp_file=$(mktemp /tmp/moad-urls-XXXXXX)
     echo -e "$info" > "$temp_file"
-    # Use textbox for easy copy/paste (no --stdout, no redirect to /dev/null)
-    dialog --title "Service URLs" --textbox "$temp_file" 20 75 2>&1 >/dev/null
+    dialog --stdout --title "Service URLs" --textbox "$temp_file" 18 70 >/dev/null 2>&1
     rm -f "$temp_file"
+    
+    # Then show password separately in a textbox for easy copy
+    if [ -n "$grafana_pass" ]; then
+        local pass_file
+        pass_file=$(mktemp /tmp/moad-password-XXXXXX)
+        echo -e "Grafana Admin Password:\n\n${grafana_pass}\n\n\n(Use mouse or keyboard to select and copy)" > "$pass_file"
+        dialog --stdout --title "Grafana Password (Select to Copy)" --textbox "$pass_file" 10 60 >/dev/null 2>&1
+        rm -f "$pass_file"
+    fi
 }
 
 check_service_health() {
