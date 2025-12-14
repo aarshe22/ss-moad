@@ -1453,7 +1453,7 @@ show_service_urls() {
     local grafana_pass
     grafana_pass=$(read_env_value "GRAFANA_ADMIN_PASSWORD")
     
-    # Show all service URLs
+    # Show all service URLs in one large textbox (no scrolling needed)
     local info="MOAD Service URLs:\n\n"
     info+="Grafana (Visualization):\n"
     info+="  URL: ${GRAFANA_URL}\n"
@@ -1479,26 +1479,9 @@ show_service_urls() {
     local temp_file
     temp_file=$(mktemp /tmp/moad-urls-XXXXXX)
     echo -e "$info" > "$temp_file"
-    dialog --stdout --title "Service URLs" --textbox "$temp_file" 18 70 >/dev/null 2>&1
+    # Large textbox to show everything without scrolling (25 lines, 80 columns)
+    dialog --stdout --title "Service URLs" --textbox "$temp_file" 25 80 >/dev/null 2>&1
     rm -f "$temp_file"
-    
-    # Show menu with option to exit and echo password
-    if [ -n "$grafana_pass" ]; then
-        local choice
-        choice=$(dialog --stdout --title "Service URLs" \
-            --menu "Select an action:" 10 50 2 \
-            "1" "Return to Main Menu" \
-            "2" "Exit and Echo Password to Shell" 2>&1)
-        
-        if [ "$choice" = "2" ]; then
-            # Exit moad-manager and echo password to stdout
-            clear
-            echo "Grafana URL: ${GRAFANA_URL}"
-            echo "Grafana Username: admin"
-            echo "Grafana Password: ${grafana_pass}"
-            exit 0
-        fi
-    fi
 }
 
 check_service_health() {
