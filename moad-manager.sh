@@ -1979,6 +1979,189 @@ restore_moad_config() {
 # STATUS BAR FUNCTIONS
 # ============================================================================
 
+# Function to quickly check MySQL connection status (non-blocking, fast)
+check_mysql_status_quick() {
+    # Check if .env exists
+    if [ ! -f .env ]; then
+        echo "?"
+        return
+    fi
+    
+    # Load MySQL credentials
+    local mysql_host
+    local mysql_user
+    local mysql_pass
+    
+    mysql_host=$(read_env_value "MYSQL_HOST")
+    mysql_user=$(read_env_value "MYSQL_MOAD_RO_USER")
+    mysql_pass=$(read_env_value "MYSQL_MOAD_RO_PASSWORD")
+    
+    # Check if credentials are set
+    if [ -z "$mysql_host" ] || [ -z "$mysql_user" ] || [ -z "$mysql_pass" ]; then
+        echo "?"
+        return
+    fi
+    
+    # Quick TCP connection test (timeout 1 second, non-blocking)
+    if timeout 1 bash -c "exec 3<>/dev/tcp/$mysql_host/3306" 2>/dev/null; then
+        exec 3<&-
+        exec 3>&-
+        echo "✓"
+    else
+        echo "✗"
+    fi
+}
+
+# Function to check NFS mount status
+check_nfs_mount_status() {
+    local mount_path="/data/moad/logs"
+    
+    # Check if path exists
+    if [ ! -d "$mount_path" ]; then
+        echo "✗"
+        return
+    fi
+    
+    # Check if path is readable
+    if [ ! -r "$mount_path" ]; then
+        echo "✗"
+        return
+    fi
+    
+    # Check if it's a mount point
+    if mountpoint -q "$mount_path" 2>/dev/null; then
+        # Check if it's NFS (preferred) or another remote filesystem
+        if mount | grep -qE "$mount_path.*(nfs|nfs4)"; then
+            echo "✓"
+        else
+            # Mounted but not NFS - still OK (could be CIFS, etc.)
+            echo "✓"
+        fi
+    else
+        # Not a mount point - might be local directory (OK for development)
+        # Check if expected log directories exist
+        if [ -d "$mount_path/app1" ] || [ -d "$mount_path/app2" ]; then
+            echo "⚠"
+        else
+            echo "✗"
+        fi
+    fi
+}
+
+# Function to get Vector structured files statistics
+get_vector_files_stats() {
+    local vector_dir="./data/vector/structured"
+    local record_count=0
+    local latest_timestamp=""
+    local latest_file=""
+    local latest_file_time=0
+    
+    # Check if directory exists
+    if [ ! -d "$vector_dir" ]; then
+        echo "0|"
+        return
+    fi
+    
+    # Find all vector files (both .jsonl and .jsonl.gz)
+    local files
+    files=$(find "$vector_dir" -name "vector-*.jsonl*" -type f 2>/dev/null | sort)
+    
+    if [ -z "$files" ]; then
+        echo "0|"
+        return
+    fi
+    
+    # Process each file to count records and find latest timestamp
+    while IFS= read -r file; do
+        if [ -z "$file" ]; then
+            continue
+        fi
+        
+        # Count records (lines) in file
+        local file_records=0
+        if [[ "$file" == *.gz ]]; then
+            # Compressed file
+            file_records=$(gunzip -c "$file" 2>/dev/null | wc -l | tr -d ' ')
+        else
+            # Uncompressed file
+            file_records=$(wc -l < "$file" 2>/dev/null | tr -d ' ')
+        fi
+        
+        if [ -n "$file_records" ] && [ "$file_records" -gt 0 ]; then
+            record_count=$((record_count + file_records))
+            
+            # Get the latest timestamp from this file (check last few lines for most recent)
+            local file_latest=""
+            local last_lines=""
+            
+            if [[ "$file" == *.gz ]]; then
+                # Compressed file - get last 10 lines
+                last_lines=$(gunzip -c "$file" 2>/dev/null | tail -10)
+            else
+                # Uncompressed file
+                last_lines=$(tail -10 "$file" 2>/dev/null)
+            fi
+            
+            # Extract timestamp from JSON lines (try @timestamp first, then timestamp)
+            if [ -n "$last_lines" ]; then
+                # Try using jq if available (more reliable)
+                if command -v jq >/dev/null 2>&1; then
+                    while IFS= read -r line; do
+                        if [ -n "$line" ]; then
+                            local ts
+                            ts=$(echo "$line" | jq -r '.@timestamp // .timestamp // empty' 2>/dev/null)
+                            if [ -n "$ts" ] && [ "$ts" != "null" ]; then
+                                file_latest="$ts"
+                            fi
+                        fi
+                    done <<< "$last_lines"
+                else
+                    # Fallback: use grep/sed to extract timestamp
+                    file_latest=$(echo "$last_lines" | grep -oE '"@timestamp":"[^"]*"|"timestamp":"[^"]*"' | tail -1 | sed 's/.*"\([^"]*\)".*/\1/')
+                fi
+            fi
+            
+            # If we found a timestamp, check if it's newer
+            if [ -n "$file_latest" ] && [ "$file_latest" != "null" ]; then
+                # Convert timestamp to epoch for comparison (handle ISO 8601 format)
+                local file_epoch=0
+                if command -v date >/dev/null 2>&1; then
+                    # Try ISO 8601 format first
+                    file_epoch=$(date -d "$file_latest" +%s 2>/dev/null || echo "0")
+                    # If that failed, try other formats
+                    if [ "$file_epoch" = "0" ]; then
+                        file_epoch=$(date -d "$(echo "$file_latest" | sed 's/T/ /' | cut -d'.' -f1)" +%s 2>/dev/null || echo "0")
+                    fi
+                fi
+                
+                if [ "$file_epoch" -gt "$latest_file_time" ] && [ "$file_epoch" != "0" ]; then
+                    latest_file_time=$file_epoch
+                    latest_timestamp="$file_latest"
+                    latest_file="$file"
+                fi
+            fi
+        fi
+    done <<< "$files"
+    
+    # Format latest timestamp for display (compact format)
+    local display_timestamp=""
+    if [ -n "$latest_timestamp" ] && [ "$latest_file_time" -gt 0 ]; then
+        # Convert epoch to readable format (YYYY-MM-DD HH:MM)
+        if command -v date >/dev/null 2>&1; then
+            display_timestamp=$(date -d "@$latest_file_time" "+%Y-%m-%d %H:%M" 2>/dev/null || \
+                               date -r "$latest_file_time" "+%Y-%m-%d %H:%M" 2>/dev/null || \
+                               echo "")
+        fi
+        # Fallback: use original timestamp if date conversion failed
+        if [ -z "$display_timestamp" ]; then
+            display_timestamp=$(echo "$latest_timestamp" | sed 's/T/ /' | cut -d'.' -f1 | cut -d'+' -f1 | cut -d'Z' -f1 | cut -d' ' -f1,2 | cut -c1-16)
+        fi
+    fi
+    
+    # Return: record_count|latest_timestamp
+    echo "${record_count}|${display_timestamp}"
+}
+
 # Function to get container health status
 get_container_health() {
     local container=$1
@@ -2082,6 +2265,50 @@ generate_status_bar() {
         total_count=$((total_count + 1))
     done
     
+    # Check MySQL connection status (quick, non-blocking)
+    local mysql_status
+    mysql_status=$(check_mysql_status_quick)
+    
+    # Check NFS mount status
+    local nfs_status
+    nfs_status=$(check_nfs_mount_status)
+    
+    # Get Vector structured files statistics
+    local vector_stats
+    vector_stats=$(get_vector_files_stats)
+    local vector_record_count
+    local vector_latest_time
+    vector_record_count=$(echo "$vector_stats" | cut -d'|' -f1)
+    vector_latest_time=$(echo "$vector_stats" | cut -d'|' -f2)
+    
+    # Format vector stats for display
+    local vector_display=""
+    if [ "$vector_record_count" = "0" ]; then
+        vector_display="0 recs"
+    else
+        # Format large numbers with commas
+        if [ "$vector_record_count" -gt 999 ]; then
+            vector_display=$(printf "%'d" "$vector_record_count" 2>/dev/null || echo "$vector_record_count")
+        else
+            vector_display="$vector_record_count"
+        fi
+        vector_display="${vector_display} recs"
+        if [ -n "$vector_latest_time" ]; then
+            vector_display="${vector_display} (${vector_latest_time})"
+        fi
+    fi
+    
+    # Update overall health based on MySQL and NFS status
+    if [ "$mysql_status" = "✗" ] || [ "$nfs_status" = "✗" ]; then
+        if [ "$overall_health" = "healthy" ]; then
+            overall_health="warning"
+        fi
+    elif [ "$nfs_status" = "⚠" ]; then
+        if [ "$overall_health" = "healthy" ]; then
+            overall_health="warning"
+        fi
+    fi
+    
     # Determine overall badge
     local overall_badge=""
     if [ "$overall_health" = "healthy" ]; then
@@ -2090,6 +2317,13 @@ generate_status_bar() {
         overall_badge="⚠ WARNING"
     else
         overall_badge="✗ FAILURE"
+    fi
+    
+    # Add MySQL, NFS, and Vector stats to status line
+    if [ -n "$status_line" ]; then
+        status_line="${status_line} | ${mysql_status}mysql | ${nfs_status}nfs | ${vector_display}"
+    else
+        status_line="${mysql_status}mysql | ${nfs_status}nfs | ${vector_display}"
     fi
     
     # Return formatted status bar
