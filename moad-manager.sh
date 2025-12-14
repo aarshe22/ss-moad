@@ -2,7 +2,8 @@
 # moad-manager.sh - Comprehensive MOAD stack management interface
 # Provides dialog-based interface for all MOAD operations
 
-set -e
+# Don't exit on error - return to main menu instead
+set +e
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -129,8 +130,8 @@ generate_env_file() {
     if [ -f .env ]; then
         dialog --stdout --yesno "WARNING: .env file already exists!\n\nDo you want to update it?" 8 50 2>&1 >/dev/null
         
+        # Handle cancel/ESC - return to main menu
         if [ $? -ne 0 ]; then
-            dialog --stdout --msgbox "Aborted. Existing .env file preserved." 8 50 2>&1 >/dev/null
             return
         fi
         
@@ -144,23 +145,28 @@ generate_env_file() {
     
     # MySQL Host
     local mysql_host
+    local exit_code
     if [ -n "$existing_mysql_host" ]; then
         mysql_host=$(dialog --stdout --inputbox "MySQL Host (IP address or hostname):" 10 60 "$existing_mysql_host" 2>&1)
+        exit_code=$?
     else
         mysql_host=$(dialog --stdout --inputbox "MySQL Host (IP address or hostname):" 10 60 2>&1)
+        exit_code=$?
     fi
     
-    if [ -z "$mysql_host" ]; then
-        dialog --stdout --msgbox "Error: MySQL host is required" 8 50 2>&1 >/dev/null
+    # Handle cancel/ESC - return to main menu
+    if [ $exit_code -ne 0 ] || [ -z "$mysql_host" ]; then
         return
     fi
     
     # MySQL User
     local mysql_user
-    if [ -n "$existing_mysql_user" ]; then
-        mysql_user=$(dialog --stdout --inputbox "MySQL User:" 10 60 "$existing_mysql_user" 2>&1)
-    else
-        mysql_user=$(dialog --stdout --inputbox "MySQL User:" 10 60 "moad_ro" 2>&1)
+    mysql_user=$(dialog --stdout --inputbox "MySQL User:" 10 60 "${existing_mysql_user:-moad_ro}" 2>&1)
+    exit_code=$?
+    
+    # Handle cancel/ESC - return to main menu
+    if [ $exit_code -ne 0 ]; then
+        return
     fi
     mysql_user=${mysql_user:-moad_ro}
     
@@ -171,15 +177,20 @@ generate_env_file() {
         if [ $? -eq 0 ]; then
             mysql_password="$existing_mysql_password"
         else
-            mysql_password=$(dialog --stdout --passwordbox "Enter new MySQL password:" 10 60 2>&1)
+            mysql_password=$(dialog --stdout --inputbox "Enter new MySQL password:" 10 60 2>&1)
+            exit_code=$?
+            # Handle cancel/ESC - return to main menu
+            if [ $exit_code -ne 0 ]; then
+                return
+            fi
         fi
     else
-        mysql_password=$(dialog --stdout --passwordbox "MySQL Password:" 10 60 2>&1)
-    fi
-    
-    if [ -z "$mysql_password" ]; then
-        dialog --stdout --msgbox "Error: MySQL password is required" 8 50 2>&1 >/dev/null
-        return
+        mysql_password=$(dialog --stdout --inputbox "MySQL Password:" 10 60 2>&1)
+        exit_code=$?
+        # Handle cancel/ESC - return to main menu
+        if [ $exit_code -ne 0 ] || [ -z "$mysql_password" ]; then
+            return
+        fi
     fi
     
     # Generate or preserve passwords
@@ -249,9 +260,9 @@ view_env_file() {
         return
     fi
     
-    # Mask passwords in display
+    # Display .env file contents without masking (user has root access)
     local env_content
-    env_content=$(sed 's/\(PASSWORD\)=.*/\1=***MASKED***/g' .env)
+    env_content=$(cat .env)
     
     dialog --stdout --title ".env File Contents" --msgbox "$env_content" 20 70 2>&1 >/dev/null
 }
@@ -545,19 +556,24 @@ restart_individual_container() {
     fi
     
     local selected
+    local exit_code
     selected=$(dialog --stdout --title "Select Container to Restart" \
         --menu "Choose a container to restart:" 15 60 10 \
         "${menu_items[@]}" 2>&1)
+    exit_code=$?
     
-    if [ -n "$selected" ]; then
-        dialog --stdout --yesno "Restart container: $selected?" 8 50 2>&1 >/dev/null
-        if [ $? -eq 0 ]; then
-            dialog --stdout --infobox "Restarting $selected..." 5 50 2>&1 >/dev/null
-            if docker compose restart "$selected" >/dev/null 2>&1; then
-                dialog --stdout --msgbox "Container $selected restarted successfully." 8 50 2>&1 >/dev/null
-            else
-                dialog --stdout --msgbox "Error: Failed to restart $selected." 8 50 2>&1 >/dev/null
-            fi
+    # Handle cancel/ESC - return to main menu
+    if [ $exit_code -ne 0 ] || [ -z "$selected" ]; then
+        return
+    fi
+    
+    dialog --stdout --yesno "Restart container: $selected?" 8 50 2>&1 >/dev/null
+    if [ $? -eq 0 ]; then
+        dialog --stdout --infobox "Restarting $selected..." 5 50 2>&1 >/dev/null
+        if docker compose restart "$selected" >/dev/null 2>&1; then
+            dialog --stdout --msgbox "Container $selected restarted successfully." 8 50 2>&1 >/dev/null
+        else
+            dialog --stdout --msgbox "Error: Failed to restart $selected." 8 50 2>&1 >/dev/null
         fi
     fi
 }
@@ -588,25 +604,36 @@ view_container_logs() {
     fi
     
     local selected
+    local exit_code
     selected=$(dialog --stdout --title "Select Container for Logs" \
         --menu "Choose a container to view logs:" 15 60 10 \
         "${menu_items[@]}" 2>&1)
+    exit_code=$?
     
-    if [ -n "$selected" ]; then
-        local lines
-        lines=$(dialog --stdout --inputbox "Number of log lines to show (default: 100):" 8 50 "100" 2>&1)
-        lines=${lines:-100}
-        
-        dialog --stdout --infobox "Fetching logs for $selected..." 5 50 2>&1 >/dev/null
-        local logs
-        logs=$(docker compose logs --tail="$lines" "$selected" 2>&1)
-        
-        if [ -z "$logs" ]; then
-            logs="No logs available for $selected"
-        fi
-        
-        dialog --stdout --title "Logs: $selected" --msgbox "$logs" 25 80 2>&1 >/dev/null
+    # Handle cancel/ESC - return to main menu
+    if [ $exit_code -ne 0 ] || [ -z "$selected" ]; then
+        return
     fi
+    
+    local lines
+    lines=$(dialog --stdout --inputbox "Number of log lines to show (default: 100):" 8 50 "100" 2>&1)
+    exit_code=$?
+    
+    # Handle cancel/ESC - return to main menu
+    if [ $exit_code -ne 0 ]; then
+        return
+    fi
+    lines=${lines:-100}
+    
+    dialog --stdout --infobox "Fetching logs for $selected..." 5 50 2>&1 >/dev/null
+    local logs
+    logs=$(docker compose logs --tail="$lines" "$selected" 2>&1)
+    
+    if [ -z "$logs" ]; then
+        logs="No logs available for $selected"
+    fi
+    
+    dialog --stdout --title "Logs: $selected" --msgbox "$logs" 25 80 2>&1 >/dev/null
 }
 
 view_recent_errors() {
@@ -879,18 +906,271 @@ view_configuration_files() {
     )
     
     local selected
+    local exit_code
     selected=$(dialog --stdout --title "View Configuration" \
         --menu "Select a configuration file to view:" 12 60 5 \
         "${menu_items[@]}" 2>&1)
+    exit_code=$?
     
-    if [ -n "$selected" ]; then
-        if [ -f "$selected" ]; then
-            local content
-            content=$(head -100 "$selected" 2>/dev/null || echo "Error reading file")
-            dialog --stdout --title "Config: $selected" --msgbox "$content" 25 80 2>&1 >/dev/null
-        else
-            dialog --stdout --msgbox "File not found: $selected" 8 50 2>&1 >/dev/null
+    # Handle cancel/ESC - return to main menu
+    if [ $exit_code -ne 0 ] || [ -z "$selected" ]; then
+        return
+    fi
+    
+    if [ -f "$selected" ]; then
+        local content
+        content=$(head -100 "$selected" 2>/dev/null || echo "Error reading file")
+        dialog --stdout --title "Config: $selected" --msgbox "$content" 25 80 2>&1 >/dev/null
+    else
+        dialog --stdout --msgbox "File not found: $selected" 8 50 2>&1 >/dev/null
+    fi
+}
+
+# ============================================================================
+# BACKUP AND RESTORE FUNCTIONS
+# ============================================================================
+
+backup_moad_config() {
+    # Show warning about sensitive information
+    dialog --stdout --yesno "WARNING: This backup will contain sensitive information including:\n\n- MySQL passwords\n- Grafana admin passwords\n- All configuration files\n\nEnsure backup files are stored securely.\n\nContinue with backup?" 12 70 2>&1 >/dev/null
+    if [ $? -ne 0 ]; then
+        return
+    fi
+    
+    # Get backup file path
+    local backup_file
+    local default_file="moad-backup-$(date +%Y%m%d-%H%M%S).json"
+    backup_file=$(dialog --stdout --inputbox "Backup file path:" 10 60 "$default_file" 2>&1)
+    local exit_code=$?
+    
+    # Handle cancel/ESC - return to main menu
+    if [ $exit_code -ne 0 ] || [ -z "$backup_file" ]; then
+        return
+    fi
+    
+    # Ensure .json extension
+    if [[ ! "$backup_file" =~ \.json$ ]]; then
+        backup_file="${backup_file}.json"
+    fi
+    
+    dialog --stdout --infobox "Creating backup..." 5 50 2>&1 >/dev/null
+    
+    # Create temporary directory for file collection
+    local temp_dir
+    temp_dir=$(mktemp -d)
+    local backup_data="{}"
+    
+    # Function to encode file to base64 and add to JSON
+    add_file_to_backup() {
+        local file_path=$1
+        local json_key=$2
+        
+        if [ -f "$file_path" ]; then
+            local file_content
+            file_content=$(base64 -w 0 < "$file_path" 2>/dev/null || base64 < "$file_path" 2>/dev/null)
+            local file_size
+            file_size=$(stat -f%z "$file_path" 2>/dev/null || stat -c%s "$file_path" 2>/dev/null)
+            
+            # Use jq if available, otherwise use sed/awk
+            if command -v jq >/dev/null 2>&1; then
+                backup_data=$(echo "$backup_data" | jq --arg key "$json_key" --arg content "$file_content" --arg size "$file_size" --arg path "$file_path" '. + {($key): {"content": $content, "size": $size, "path": $path}}')
+            else
+                # Fallback: simple JSON construction (basic, but works)
+                local entry="\"$json_key\":{\"content\":\"$file_content\",\"size\":\"$file_size\",\"path\":\"$file_path\"}"
+                if [ "$backup_data" = "{}" ]; then
+                    backup_data="{${entry}}"
+                else
+                    backup_data=$(echo "$backup_data" | sed "s/}$/,${entry}}/")
+                fi
+            fi
         fi
+    }
+    
+    # Backup all configuration files
+    add_file_to_backup ".env" "env_file"
+    add_file_to_backup "docker-compose.yml" "docker_compose"
+    add_file_to_backup "vector/vector.yml" "vector_config"
+    add_file_to_backup "prometheus/prometheus.yml" "prometheus_config"
+    add_file_to_backup "loki/loki-config.yml" "loki_config"
+    add_file_to_backup "grafana/provisioning/datasources/datasources.yml" "grafana_datasources"
+    add_file_to_backup "grafana/provisioning/dashboards/dashboards.yml" "grafana_dashboards_provisioning"
+    
+    # Backup all Grafana dashboard JSON files
+    local dashboard_count=0
+    for dashboard in grafana/dashboards/*.json; do
+        if [ -f "$dashboard" ]; then
+            local dashboard_name
+            dashboard_name=$(basename "$dashboard" .json)
+            add_file_to_backup "$dashboard" "grafana_dashboard_${dashboard_name}"
+            dashboard_count=$((dashboard_count + 1))
+        fi
+    done
+    
+    # Create backup JSON structure
+    local backup_json
+    if command -v jq >/dev/null 2>&1; then
+        backup_json=$(cat <<EOF
+{
+  "moad_backup": {
+    "version": "1.0",
+    "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+    "hostname": "$(hostname)",
+    "files": $backup_data,
+    "metadata": {
+      "dashboard_count": $dashboard_count,
+      "backup_created_by": "moad-manager.sh"
+    }
+  }
+}
+EOF
+)
+    else
+        # Fallback JSON construction
+        backup_json=$(cat <<EOF
+{
+  "moad_backup": {
+    "version": "1.0",
+    "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+    "hostname": "$(hostname)",
+    "files": $backup_data,
+    "metadata": {
+      "dashboard_count": $dashboard_count,
+      "backup_created_by": "moad-manager.sh"
+    }
+  }
+}
+EOF
+)
+    fi
+    
+    # Write backup file
+    echo "$backup_json" > "$backup_file"
+    
+    # Cleanup
+    rm -rf "$temp_dir"
+    
+    local file_size
+    file_size=$(stat -f%z "$backup_file" 2>/dev/null || stat -c%s "$backup_file" 2>/dev/null)
+    local file_size_human
+    file_size_human=$(numfmt --to=iec-i --suffix=B "$file_size" 2>/dev/null || echo "${file_size} bytes")
+    
+    dialog --stdout --msgbox "Backup created successfully!\n\nFile: $backup_file\nSize: $file_size_human\n\n⚠️  WARNING: This file contains sensitive information.\nStore it securely!" 12 70 2>&1 >/dev/null
+}
+
+restore_moad_config() {
+    # Show warning
+    dialog --stdout --yesno "WARNING: This will overwrite existing configuration files!\n\n- .env file\n- docker-compose.yml\n- All service configuration files\n- Grafana dashboards\n\nMake sure you have a backup of current configuration.\n\nContinue with restore?" 14 70 2>&1 >/dev/null
+    if [ $? -ne 0 ]; then
+        return
+    fi
+    
+    # Get backup file path
+    local backup_file
+    backup_file=$(dialog --stdout --fselect "$(pwd)/" 20 70 2>&1)
+    local exit_code=$?
+    
+    # Handle cancel/ESC - return to main menu
+    if [ $exit_code -ne 0 ] || [ -z "$backup_file" ]; then
+        return
+    fi
+    
+    # Check if file exists
+    if [ ! -f "$backup_file" ]; then
+        dialog --stdout --msgbox "Error: Backup file not found:\n$backup_file" 8 60 2>&1 >/dev/null
+        return
+    fi
+    
+    # Validate JSON and extract file list
+    dialog --stdout --infobox "Validating backup file..." 5 50 2>&1 >/dev/null
+    
+    # Check if jq is available for better parsing
+    if command -v jq >/dev/null 2>&1; then
+        # Validate JSON structure
+        if ! jq empty "$backup_file" 2>/dev/null; then
+            dialog --stdout --msgbox "Error: Invalid JSON backup file." 8 50 2>&1 >/dev/null
+            return
+        fi
+        
+        # Check if it's a MOAD backup
+        if ! jq -e '.moad_backup' "$backup_file" >/dev/null 2>&1; then
+            dialog --stdout --msgbox "Error: Not a valid MOAD backup file." 8 50 2>&1 >/dev/null
+            return
+        fi
+        
+        # Get backup info
+        local backup_version
+        backup_version=$(jq -r '.moad_backup.version' "$backup_file" 2>/dev/null)
+        local backup_timestamp
+        backup_timestamp=$(jq -r '.moad_backup.timestamp' "$backup_file" 2>/dev/null)
+        local backup_hostname
+        backup_hostname=$(jq -r '.moad_backup.hostname' "$backup_file" 2>/dev/null)
+        
+        # Show backup info and confirm
+        dialog --stdout --yesno "Backup Information:\n\nVersion: $backup_version\nCreated: $backup_timestamp\nHostname: $backup_hostname\n\nRestore this backup?" 12 60 2>&1 >/dev/null
+        if [ $? -ne 0 ]; then
+            return
+        fi
+        
+        # Restore files
+        dialog --stdout --infobox "Restoring configuration files..." 5 50 2>&1 >/dev/null
+        
+        local restore_count=0
+        local error_count=0
+        local temp_restore_file
+        temp_restore_file=$(mktemp)
+        
+        # Get all file keys from backup and restore them
+        jq -r '.moad_backup.files | keys[]' "$backup_file" 2>/dev/null > "$temp_restore_file"
+        
+        while IFS= read -r file_key; do
+            [ -z "$file_key" ] && continue
+            
+            local file_path
+            file_path=$(jq -r ".moad_backup.files[\"$file_key\"].path" "$backup_file" 2>/dev/null)
+            local file_content
+            file_content=$(jq -r ".moad_backup.files[\"$file_key\"].content" "$backup_file" 2>/dev/null)
+            
+            if [ -n "$file_path" ] && [ -n "$file_content" ] && [ "$file_path" != "null" ] && [ "$file_content" != "null" ]; then
+                # Create directory if needed
+                local file_dir
+                file_dir=$(dirname "$file_path")
+                mkdir -p "$file_dir" 2>/dev/null
+                
+                # Decode and write file
+                echo "$file_content" | base64 -d > "$file_path" 2>/dev/null || echo "$file_content" | base64 -D > "$file_path" 2>/dev/null
+                if [ $? -eq 0 ]; then
+                    restore_count=$((restore_count + 1))
+                else
+                    error_count=$((error_count + 1))
+                fi
+            fi
+        done < "$temp_restore_file"
+        
+        rm -f "$temp_restore_file"
+        
+        if [ $error_count -eq 0 ]; then
+            dialog --stdout --msgbox "Restore completed successfully!\n\nRestored $restore_count file(s).\n\nNext steps:\n1. Review restored files\n2. Start MOAD stack" 12 60 2>&1 >/dev/null
+        else
+            dialog --stdout --msgbox "Restore completed with errors.\n\nRestored: $restore_count file(s)\nErrors: $error_count file(s)" 10 60 2>&1 >/dev/null
+        fi
+    else
+        # Fallback: basic JSON parsing without jq (limited but functional)
+        dialog --stdout --msgbox "Warning: 'jq' not found. Using basic JSON parsing.\n\nFor best results, install jq:\nsudo apt-get install jq\n\nAttempting restore anyway..." 12 60 2>&1 >/dev/null
+        
+        # Basic restore using grep/sed (less reliable)
+        local restore_count=0
+        
+        # Extract .env file
+        if grep -q '"env_file"' "$backup_file"; then
+            local env_content
+            env_content=$(grep -A 100 '"env_file"' "$backup_file" | grep '"content"' | sed 's/.*"content":"\([^"]*\)".*/\1/' | head -1)
+            if [ -n "$env_content" ]; then
+                echo "$env_content" | base64 -d > .env 2>/dev/null || echo "$env_content" | base64 -D > .env 2>/dev/null
+                restore_count=$((restore_count + 1))
+            fi
+        fi
+        
+        dialog --stdout --msgbox "Basic restore completed.\n\nRestored $restore_count file(s).\n\nNote: Install 'jq' for full restore functionality." 10 60 2>&1 >/dev/null
     fi
 }
 
@@ -1040,7 +1320,7 @@ main_menu() {
         
         choice=$(dialog --colors --stdout --title "MOAD Stack Manager" \
             --extra-button --extra-label "Refresh" \
-            --menu "$status_bar\n\nSelect an operation:" 26 85 20 \
+            --menu "$status_bar\n\nSelect an operation:" 27 85 22 \
             "1" "\Z4Environment\Zn: Generate .env File" \
             "2" "\Z4Environment\Zn: View .env File" \
             "3" "\Z2Docker\Zn: View Container Status" \
@@ -1059,7 +1339,9 @@ main_menu() {
             "16" "\Z3System\Zn: View Disk Usage" \
             "17" "\Z3System\Zn: View System Resources" \
             "18" "\Z5Config\Zn: View Configuration Files" \
-            "19" "Exit" 2>&1)
+            "20" "\Z6Backup\Zn: Backup MOAD Configuration" \
+            "21" "\Z6Backup\Zn: Restore MOAD Configuration" \
+            "19" "Exit MOAD Manager" 2>&1)
         
         # Handle extra button (Refresh) or ESC
         local exit_code=$?
@@ -1068,10 +1350,11 @@ main_menu() {
             continue
         fi
         
+        # ESC or cancel - exit only if explicitly requested
+        # The exit option (19) is handled in the case statement below
         if [ $exit_code -ne 0 ]; then
-            # ESC or other error
-            clear
-            exit 0
+            # User pressed ESC - return to main menu (loop continues)
+            continue
         fi
         
         case "$choice" in
@@ -1129,14 +1412,31 @@ main_menu() {
             18)
                 view_configuration_files
                 ;;
-            19|"")
-                dialog --stdout --msgbox "Exiting MOAD Manager." 6 40 2>&1 >/dev/null
-                clear
-                exit 0
+            20)
+                backup_moad_config
+                ;;
+            21)
+                restore_moad_config
+                ;;
+            19)
+                dialog --stdout --yesno "Exit MOAD Manager?" 6 40 2>&1 >/dev/null
+                if [ $? -eq 0 ]; then
+                    dialog --stdout --msgbox "Exiting MOAD Manager." 6 40 2>&1 >/dev/null
+                    clear
+                    exit 0
+                fi
+                # If user cancels exit confirmation, return to menu
+                ;;
+            "")
+                # Empty choice (shouldn't happen, but handle gracefully)
+                continue
                 ;;
         esac
     done
 }
+
+# Trap Ctrl-C to exit gracefully
+trap 'clear; echo "Exiting MOAD Manager..."; exit 0' INT TERM
 
 # Start the menu
 main_menu
