@@ -1979,11 +1979,30 @@ restore_moad_config() {
 # STATUS BAR FUNCTIONS
 # ============================================================================
 
+# Function to get color block for status (GREEN=good, YELLOW=warning, RED=failure)
+get_status_color_block() {
+    local status=$1
+    case "$status" in
+        "healthy"|"good"|"running"|"✓")
+            echo "${GREEN}█${NC}"
+            ;;
+        "warning"|"unhealthy"|"starting"|"⚠"|"⟳"|"?"|"⚠")
+            echo "${YELLOW}█${NC}"
+            ;;
+        "failure"|"exited"|"stopped"|"not_found"|"✗")
+            echo "${RED}█${NC}"
+            ;;
+        *)
+            echo "${YELLOW}█${NC}"
+            ;;
+    esac
+}
+
 # Function to quickly check MySQL connection status (non-blocking, fast)
 check_mysql_status_quick() {
     # Check if .env exists
     if [ ! -f .env ]; then
-        echo "?"
+        echo "unknown"
         return
     fi
     
@@ -1998,7 +2017,7 @@ check_mysql_status_quick() {
     
     # Check if credentials are set
     if [ -z "$mysql_host" ] || [ -z "$mysql_user" ] || [ -z "$mysql_pass" ]; then
-        echo "?"
+        echo "unknown"
         return
     fi
     
@@ -2006,9 +2025,9 @@ check_mysql_status_quick() {
     if timeout 1 bash -c "exec 3<>/dev/tcp/$mysql_host/3306" 2>/dev/null; then
         exec 3<&-
         exec 3>&-
-        echo "✓"
+        echo "healthy"
     else
-        echo "✗"
+        echo "failure"
     fi
 }
 
@@ -2018,13 +2037,13 @@ check_nfs_mount_status() {
     
     # Check if path exists
     if [ ! -d "$mount_path" ]; then
-        echo "✗"
+        echo "failure"
         return
     fi
     
     # Check if path is readable
     if [ ! -r "$mount_path" ]; then
-        echo "✗"
+        echo "failure"
         return
     fi
     
@@ -2032,18 +2051,18 @@ check_nfs_mount_status() {
     if mountpoint -q "$mount_path" 2>/dev/null; then
         # Check if it's NFS (preferred) or another remote filesystem
         if mount | grep -qE "$mount_path.*(nfs|nfs4)"; then
-            echo "✓"
+            echo "healthy"
         else
             # Mounted but not NFS - still OK (could be CIFS, etc.)
-            echo "✓"
+            echo "healthy"
         fi
     else
         # Not a mount point - might be local directory (OK for development)
         # Check if expected log directories exist
         if [ -d "$mount_path/app1" ] || [ -d "$mount_path/app2" ]; then
-            echo "⚠"
+            echo "warning"
         else
-            echo "✗"
+            echo "failure"
         fi
     fi
 }
@@ -2207,17 +2226,15 @@ get_container_status() {
 # Function to generate status bar
 generate_status_bar() {
     local containers=("moad-vector" "moad-loki" "moad-prometheus" "moad-mysqld-exporter" "moad-grafana")
-    local status_line=""
+    local status_items=()
     local overall_health="healthy"
-    local healthy_count=0
-    local warning_count=0
-    local failure_count=0
-    local total_count=0
     
+    # Build status items array with color blocks
     for container in "${containers[@]}"; do
         local status
         local health
         local display_name
+        local status_value
         
         # Always get fresh status from docker
         status=$(get_container_status_from_docker "$container")
@@ -2226,52 +2243,66 @@ generate_status_bar() {
         # Get short name (remove moad- prefix)
         display_name=$(echo "$container" | sed 's/^moad-//')
         
-        # Determine health badge
-        local badge=""
+        # Determine health status value
         if [ "$status" = "not_found" ] || [ "$status" = "exited" ] || [ "$status" = "stopped" ]; then
-            badge="✗"
+            status_value="failure"
             overall_health="failure"
-            failure_count=$((failure_count + 1))
         elif [ "$health" = "healthy" ] || ([ "$health" = "running" ] && [ "$status" = "running" ]); then
-            badge="✓"
-            healthy_count=$((healthy_count + 1))
+            status_value="healthy"
         elif [ "$health" = "unhealthy" ]; then
-            badge="⚠"
+            status_value="warning"
             if [ "$overall_health" = "healthy" ]; then
                 overall_health="warning"
             fi
-            warning_count=$((warning_count + 1))
         elif [ "$health" = "starting" ]; then
-            badge="⟳"
+            status_value="warning"
             if [ "$overall_health" = "healthy" ]; then
                 overall_health="warning"
             fi
-            warning_count=$((warning_count + 1))
         else
-            badge="?"
+            status_value="warning"
             if [ "$overall_health" = "healthy" ]; then
                 overall_health="warning"
             fi
-            warning_count=$((warning_count + 1))
         fi
         
-        # Build status line (format: badge name)
-        if [ -z "$status_line" ]; then
-            status_line="${badge}${display_name}"
-        else
-            status_line="${status_line} | ${badge}${display_name}"
-        fi
-        
-        total_count=$((total_count + 1))
+        # Add to status items: "color_block name"
+        local color_block
+        color_block=$(get_status_color_block "$status_value")
+        status_items+=("${color_block}${display_name}")
     done
     
-    # Check MySQL connection status (quick, non-blocking)
+    # Check MySQL connection status
     local mysql_status
     mysql_status=$(check_mysql_status_quick)
+    local mysql_color_block
+    mysql_color_block=$(get_status_color_block "$mysql_status")
+    status_items+=("${mysql_color_block}mysql")
+    
+    # Update overall health based on MySQL
+    if [ "$mysql_status" = "failure" ]; then
+        if [ "$overall_health" = "healthy" ]; then
+            overall_health="warning"
+        fi
+    fi
     
     # Check NFS mount status
     local nfs_status
     nfs_status=$(check_nfs_mount_status)
+    local nfs_color_block
+    nfs_color_block=$(get_status_color_block "$nfs_status")
+    status_items+=("${nfs_color_block}nfs")
+    
+    # Update overall health based on NFS
+    if [ "$nfs_status" = "failure" ]; then
+        if [ "$overall_health" = "healthy" ]; then
+            overall_health="warning"
+        fi
+    elif [ "$nfs_status" = "warning" ]; then
+        if [ "$overall_health" = "healthy" ]; then
+            overall_health="warning"
+        fi
+    fi
     
     # Get Vector structured files statistics
     local vector_stats
@@ -2284,50 +2315,77 @@ generate_status_bar() {
     # Format vector stats for display
     local vector_display=""
     if [ "$vector_record_count" = "0" ]; then
-        vector_display="0 recs"
+        vector_display="0r"
     else
-        # Format large numbers with commas
-        if [ "$vector_record_count" -gt 999 ]; then
-            vector_display=$(printf "%'d" "$vector_record_count" 2>/dev/null || echo "$vector_record_count")
+        # Format large numbers with K/M suffix
+        if [ "$vector_record_count" -gt 1000000 ]; then
+            vector_display=$(echo "scale=1; $vector_record_count/1000000" | bc 2>/dev/null | sed 's/\.0$//')
+            vector_display="${vector_display}M"
+        elif [ "$vector_record_count" -gt 1000 ]; then
+            vector_display=$(echo "scale=1; $vector_record_count/1000" | bc 2>/dev/null | sed 's/\.0$//')
+            vector_display="${vector_display}K"
         else
             vector_display="$vector_record_count"
         fi
-        vector_display="${vector_display} recs"
+        vector_display="${vector_display}r"
         if [ -n "$vector_latest_time" ]; then
-            vector_display="${vector_display} (${vector_latest_time})"
+            local compact_time
+            compact_time=$(echo "$vector_latest_time" | sed 's/^[0-9]\{4\}-//' | cut -d' ' -f1,2)
+            vector_display="${vector_display} ${compact_time}"
         fi
     fi
+    status_items+=("${vector_display}")
     
-    # Update overall health based on MySQL and NFS status
-    if [ "$mysql_status" = "✗" ] || [ "$nfs_status" = "✗" ]; then
-        if [ "$overall_health" = "healthy" ]; then
-            overall_health="warning"
+    # Determine overall badge with color block
+    local overall_color_block
+    overall_color_block=$(get_status_color_block "$overall_health")
+    local overall_text=""
+    case "$overall_health" in
+        "healthy")
+            overall_text="HEALTHY"
+            ;;
+        "warning")
+            overall_text="WARNING"
+            ;;
+        *)
+            overall_text="FAILURE"
+            ;;
+    esac
+    local overall_badge="${overall_color_block} ${overall_text}"
+    
+    # Build status lines (split into 1-2 lines if needed)
+    local line1=""
+    local line2=""
+    local total_items=${#status_items[@]}
+    local items_per_line=$(( (total_items + 1) / 2 ))  # Distribute evenly
+    
+    # First line: overall badge + first half of items
+    line1="${overall_badge}"
+    for ((i=0; i<items_per_line && i<total_items; i++)); do
+        if [ -n "$line1" ]; then
+            line1="${line1} | ${status_items[$i]}"
+        else
+            line1="${status_items[$i]}"
         fi
-    elif [ "$nfs_status" = "⚠" ]; then
-        if [ "$overall_health" = "healthy" ]; then
-            overall_health="warning"
-        fi
+    done
+    
+    # Second line: remaining items (if any)
+    if [ $total_items -gt $items_per_line ]; then
+        for ((i=items_per_line; i<total_items; i++)); do
+            if [ -z "$line2" ]; then
+                line2="${status_items[$i]}"
+            else
+                line2="${line2} | ${status_items[$i]}"
+            fi
+        done
     fi
     
-    # Determine overall badge
-    local overall_badge=""
-    if [ "$overall_health" = "healthy" ]; then
-        overall_badge="✓ HEALTHY"
-    elif [ "$overall_health" = "warning" ]; then
-        overall_badge="⚠ WARNING"
+    # Return formatted status bar (1-2 lines)
+    if [ -n "$line2" ]; then
+        echo -e "${line1}\n${line2}"
     else
-        overall_badge="✗ FAILURE"
+        echo "${line1}"
     fi
-    
-    # Add MySQL, NFS, and Vector stats to status line
-    if [ -n "$status_line" ]; then
-        status_line="${status_line} | ${mysql_status}mysql | ${nfs_status}nfs | ${vector_display}"
-    else
-        status_line="${mysql_status}mysql | ${nfs_status}nfs | ${vector_display}"
-    fi
-    
-    # Return formatted status bar
-    echo "${overall_badge} | ${status_line}"
 }
 
 # Function to show status bar in dialog
@@ -2346,22 +2404,28 @@ show_status_bar() {
 
 main_menu() {
     while true; do
-        # Generate status bar
+        # Generate status bar (may be 1-2 lines)
         local status_bar
         status_bar=$(generate_status_bar)
         
-        # Extract overall health for title color/emphasis
+        # Extract overall health for title color/emphasis (from first line)
         local overall_status
-        overall_status=$(echo "$status_bar" | cut -d'|' -f1 | xargs)
+        overall_status=$(echo "$status_bar" | head -1 | sed 's/.*█ //' | cut -d' ' -f1)
+        
+        # Calculate menu height based on status bar lines
+        local status_lines
+        status_lines=$(echo "$status_bar" | wc -l | tr -d ' ')
+        local menu_height=22
+        local adjusted_height=$((menu_height + status_lines))
         
         choice=$(dialog --colors --stdout --title "MOAD Stack Manager" \
             --extra-button --extra-label "Refresh" \
-            --menu "$status_bar\n\nSelect an operation:" 27 85 22 \
+            --menu "$status_bar\n\nSelect an operation:" $adjusted_height 100 0 \
             "1" "\Z4Environment\Zn: Generate .env File" \
             "2" "\Z4Environment\Zn: View .env File" \
             "3" "\Z2Docker\Zn: View Container Status" \
             "4" "\Z2Docker\Zn: Start All Containers" \
-            "5" "\Z2Docker\Zn: Create & Start (Build if needed)" \
+            "5" "\Z2Docker\Zn: Create & Start (Build)" \
             "6" "\Z2Docker\Zn: Stop All Containers" \
             "7" "\Z2Docker\Zn: Restart All Containers" \
             "8" "\Z2Docker\Zn: Restart Individual Container" \
