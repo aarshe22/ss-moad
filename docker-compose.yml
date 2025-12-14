@@ -5,8 +5,10 @@ services:
   vector:
     image: timberio/vector:0.38.0-alpine
     container_name: moad-vector
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
     volumes:
       - ./vector/vector.yml:/etc/vector/vector.yml:ro
+      - ./vector-entrypoint.sh:/entrypoint.sh:ro
       - /data/moad/logs:/data/moad/logs:ro
       - ./data/vector/structured:/var/lib/vector/structured
     command: ["--config-dir", "/etc/vector"]
@@ -26,11 +28,13 @@ services:
   loki:
     image: grafana/loki:2.9.0
     container_name: moad-loki
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
     # No external ports - only accessible within Docker network
     volumes:
       - ./loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - ./loki-entrypoint.sh:/entrypoint.sh:ro
       - loki-data:/loki
-    command: -config.file=/etc/loki/local-config.yaml
+    command: ["-config.file=/etc/loki/local-config.yaml"]
     restart: unless-stopped
     networks:
       - moad-network
@@ -45,9 +49,11 @@ services:
   prometheus:
     image: prom/prometheus:v2.48.0
     container_name: moad-prometheus
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
     # No external ports - only accessible within Docker network
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus-entrypoint.sh:/entrypoint.sh:ro
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -77,11 +83,11 @@ services:
     container_name: moad-mysqld-exporter
     env_file:
       - .env
-    environment:
-      # DATA_SOURCE_NAME format: user:password@tcp(host:port)/
-      # Note: Docker Compose automatically reads .env for variable substitution
-      # If variables are empty, container will fail - ensure .env file exists and has values
-      DATA_SOURCE_NAME: "${MYSQL_MOAD_RO_USER}:${MYSQL_MOAD_RO_PASSWORD}@tcp(${MYSQL_HOST}:3306)/"
+    # Entrypoint script reads MYSQL_MOAD_RO_USER, MYSQL_MOAD_RO_PASSWORD, MYSQL_HOST from .env
+    # and constructs DATA_SOURCE_NAME at runtime (avoids docker-compose variable substitution issues)
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    volumes:
+      - ./mysqld-exporter-entrypoint.sh:/entrypoint.sh:ro
     # No external ports - only accessible within Docker network
     restart: unless-stopped
     networks:
@@ -101,6 +107,9 @@ services:
   grafana:
     image: grafana/grafana:12.3.0
     container_name: moad-grafana
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    env_file:
+      - .env
     ports:
       - "3000:3000"
     environment:
@@ -111,6 +120,7 @@ services:
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./grafana-entrypoint.sh:/entrypoint.sh:ro
       - grafana-data:/var/lib/grafana
     restart: unless-stopped
     networks:

@@ -15,6 +15,7 @@ sources:
       start_pattern: '^\d{4}-\d{2}-\d{2}'
       mode: continue_through
       condition_pattern: '^(?!\d{4}-\d{2}-\d{2})'
+      timeout_ms: 1000
     encoding:
       charset: utf8
     host_key: host
@@ -28,6 +29,7 @@ sources:
       start_pattern: '^\d{4}-\d{2}-\d{2}'
       mode: continue_through
       condition_pattern: '^(?!\d{4}-\d{2}-\d{2})'
+      timeout_ms: 1000
     encoding:
       charset: utf8
     host_key: host
