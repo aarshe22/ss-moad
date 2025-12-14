@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  # Vector - Log ingestion and processing
+  vector:
+    image: timberio/vector:0.38.0-alpine
+    container_name: moad-vector
+    volumes:
+      - ./vector/vector.yml:/etc/vector/vector.yml:ro
+      - /data/moad/logs:/data/moad/logs:ro
+      - ./vector/structured:/data/moad/logs/structured
+    command: ["--config-dir", "/etc/vector"]
+    restart: unless-stopped
+    networks:
+      - moad-network
+    depends_on:
+      - loki
+
+  # Loki - Log aggregation
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: moad-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: unless-stopped
+    networks:
+      - moad-network
+
+  # Prometheus - Metrics collection
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: moad-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    restart: unless-stopped
+    networks:
+      - moad-network
+
+  # MySQL Exporter - Database metrics
+  mysqld-exporter:
+    image: prom/mysqld-exporter:v0.15.1
+    container_name: moad-mysqld-exporter
+    environment:
+      DATA_SOURCE_NAME: "exporter:${MYSQL_EXPORTER_PASSWORD}@(mysql-host:3306)/schoolsoft"
+    ports:
+      - "9104:9104"
+    restart: unless-stopped
+    networks:
+      - moad-network
+    # Note: mysql-host should be replaced with actual MySQL hostname/IP
+
+  # Grafana - Visualization and dashboards
+  grafana:
+    image: grafana/grafana:12.3.0
+    container_name: moad-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    restart: unless-stopped
+    networks:
+      - moad-network
+    depends_on:
+      - loki
+      - prometheus
+
+volumes:
+  loki-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  moad-network:
+    driver: bridge
+
+
