@@ -20,3 +20,6 @@ data/
 .DS_Store
 Thumbs.db
 
+# other files
+moad-manager-errors.log
+moad-backup-*.json
