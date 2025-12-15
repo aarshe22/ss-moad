@@ -26,7 +26,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "legendFormat": "School ID: {{school_id}}"
         }
@@ -49,7 +49,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "legendFormat": "Auth Failures"
         },
@@ -58,7 +58,7 @@
           "refId": "B",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "MySQL Threads"
         }
@@ -81,7 +81,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           }
         }
       ],
@@ -104,12 +104,40 @@
         "name": "MySQL Alerts",
         "datasource": {
           "type": "prometheus",
-          "uid": "Prometheus"
+          "uid": "${ds_prom}"
         },
         "enable": true,
         "expr": "mysql_threads_connected > 100",
         "iconColor": "red",
         "title": "High MySQL Connections"
+      }
+    ]
+  },
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "ds_prom",
+        "query": "Prometheus",
+        "current": {
+          "text": "Prometheus",
+          "value": "Prometheus"
+        },
+        "hide": 0,
+        "label": "Prometheus",
+        "refresh": 1
+      },
+      {
+        "type": "datasource",
+        "name": "ds_loki",
+        "query": "Loki",
+        "current": {
+          "text": "Loki",
+          "value": "Loki"
+        },
+        "hide": 0,
+        "label": "Loki",
+        "refresh": 1
       }
     ]
   }

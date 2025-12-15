@@ -26,7 +26,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "legendFormat": "Auth Failures/sec"
         },
@@ -35,7 +35,7 @@
           "refId": "B",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "MySQL Connections"
         },
@@ -44,7 +44,7 @@
           "refId": "C",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "MySQL Running Threads"
         }
@@ -67,7 +67,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "legendFormat": "HTTP Requests/sec"
         },
@@ -76,7 +76,7 @@
           "refId": "B",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "MySQL Queries/sec"
         }
@@ -99,7 +99,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "legendFormat": "PowerSchool Events/sec"
         },
@@ -108,7 +108,7 @@
           "refId": "B",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "Slow Queries/sec"
         },
@@ -117,7 +117,7 @@
           "refId": "C",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "Row Lock Waits/sec"
         }
@@ -140,7 +140,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "legendFormat": "Form Events/sec (PFM)"
         },
@@ -149,7 +149,7 @@
           "refId": "B",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "MySQL Running Threads"
         },
@@ -158,7 +158,7 @@
           "refId": "C",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "Lock Waits/sec"
         }
@@ -181,7 +181,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "legendFormat": "Emails Sent/sec"
         },
@@ -190,7 +190,7 @@
           "refId": "B",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "legendFormat": "Emails Bounced/sec"
         },
@@ -199,7 +199,7 @@
           "refId": "C",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "Notification Queue Size"
         }
@@ -222,7 +222,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "legendFormat": "Conference Events/sec (CM)"
         },
@@ -231,7 +231,7 @@
           "refId": "B",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "MySQL Connections"
         }
@@ -254,7 +254,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "Buffer Pool Hit Ratio %"
         },
@@ -263,7 +263,7 @@
           "refId": "B",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "Queries/sec"
         }
@@ -286,7 +286,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           }
         }
       ],
@@ -309,7 +309,7 @@
         "name": "Database Saturation",
         "datasource": {
           "type": "prometheus",
-          "uid": "Prometheus"
+          "uid": "${ds_prom}"
         },
         "enable": true,
         "expr": "mysql_global_status_threads_connected / mysql_global_variables_max_connections > 0.9",
@@ -320,12 +320,40 @@
         "name": "High Lock Contention",
         "datasource": {
           "type": "prometheus",
-          "uid": "Prometheus"
+          "uid": "${ds_prom}"
         },
         "enable": true,
         "expr": "rate(mysql_global_status_innodb_row_lock_waits[5m]) > 10",
         "iconColor": "orange",
         "title": "Lock Waits > 10/sec"
+      }
+    ]
+  },
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "ds_prom",
+        "query": "Prometheus",
+        "current": {
+          "text": "Prometheus",
+          "value": "Prometheus"
+        },
+        "hide": 0,
+        "label": "Prometheus",
+        "refresh": 1
+      },
+      {
+        "type": "datasource",
+        "name": "ds_loki",
+        "query": "Loki",
+        "current": {
+          "text": "Loki",
+          "value": "Loki"
+        },
+        "hide": 0,
+        "label": "Loki",
+        "refresh": 1
       }
     ]
   }

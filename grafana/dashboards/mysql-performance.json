@@ -27,7 +27,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           }
         }
       ],
@@ -79,7 +79,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "Connected"
         },
@@ -88,7 +88,7 @@
           "refId": "B",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "Max Connections"
         }
@@ -111,7 +111,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "Running"
         }
@@ -134,7 +134,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "Data Used %"
         },
@@ -143,7 +143,7 @@
           "refId": "B",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "Free %"
         }
@@ -166,7 +166,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "Hit Ratio %"
         }
@@ -189,7 +189,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "p95"
         },
@@ -198,7 +198,7 @@
           "refId": "B",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "p99"
         },
@@ -207,7 +207,7 @@
           "refId": "C",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "Slow Queries/sec"
         }
@@ -230,7 +230,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "Lock Waits/sec"
         },
@@ -239,7 +239,7 @@
           "refId": "B",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "Lock Time (ms/sec)"
         }
@@ -262,7 +262,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "Queries/sec"
         },
@@ -271,7 +271,7 @@
           "refId": "B",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "Questions/sec"
         }
@@ -294,7 +294,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "Cache Hit Ratio %"
         }
@@ -317,7 +317,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "Aborted Connects/sec"
         },
@@ -326,7 +326,7 @@
           "refId": "B",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "Aborted Clients/sec"
         }
@@ -349,7 +349,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "{{table_name}} (schoolsoft)"
         },
@@ -358,7 +358,7 @@
           "refId": "B",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "{{table_name}} (permissionMan)"
         }
@@ -372,7 +372,7 @@
         "name": "High Connection Usage",
         "datasource": {
           "type": "prometheus",
-          "uid": "Prometheus"
+          "uid": "${ds_prom}"
         },
         "enable": true,
         "expr": "mysql_global_status_threads_connected / mysql_global_variables_max_connections > 0.8",
@@ -383,12 +383,40 @@
         "name": "Low Buffer Pool Hit Ratio",
         "datasource": {
           "type": "prometheus",
-          "uid": "Prometheus"
+          "uid": "${ds_prom}"
         },
         "enable": true,
         "expr": "(mysql_global_status_innodb_buffer_pool_read_requests / (mysql_global_status_innodb_buffer_pool_read_requests + mysql_global_status_innodb_buffer_pool_reads)) * 100 < 95",
         "iconColor": "orange",
         "title": "Buffer Pool Hit Ratio < 95%"
+      }
+    ]
+  },
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "ds_prom",
+        "query": "Prometheus",
+        "current": {
+          "text": "Prometheus",
+          "value": "Prometheus"
+        },
+        "hide": 0,
+        "label": "Prometheus",
+        "refresh": 1
+      },
+      {
+        "type": "datasource",
+        "name": "ds_loki",
+        "query": "Loki",
+        "current": {
+          "text": "Loki",
+          "value": "Loki"
+        },
+        "hide": 0,
+        "label": "Loki",
+        "refresh": 1
       }
     ]
   }

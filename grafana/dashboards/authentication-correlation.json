@@ -1,5 +1,5 @@
 {
-  "title": "Authentication Errors – Correlated View",
+  "title": "Authentication Errors \u2013 Correlated View",
   "tags": [
     "MOAD",
     "Authentication",
@@ -13,11 +13,35 @@
   "templating": {
     "list": [
       {
+        "type": "datasource",
+        "name": "ds_prom",
+        "query": "Prometheus",
+        "current": {
+          "text": "Prometheus",
+          "value": "Prometheus"
+        },
+        "hide": 0,
+        "label": "Prometheus",
+        "refresh": 1
+      },
+      {
+        "type": "datasource",
+        "name": "ds_loki",
+        "query": "Loki",
+        "current": {
+          "text": "Loki",
+          "value": "Loki"
+        },
+        "hide": 0,
+        "label": "Loki",
+        "refresh": 1
+      },
+      {
         "name": "school_id",
         "type": "query",
         "datasource": {
           "type": "loki",
-          "uid": "Loki"
+          "uid": "${ds_loki}"
         },
         "query": {
           "query": "label_values({event_type=\"authentication\"}, school_id)",
@@ -36,7 +60,7 @@
         "type": "query",
         "datasource": {
           "type": "loki",
-          "uid": "Loki"
+          "uid": "${ds_loki}"
         },
         "query": {
           "query": "label_values({event_type=\"authentication\"}, username)",
@@ -69,7 +93,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "legendFormat": "CM Failures"
         },
@@ -78,7 +102,7 @@
           "refId": "B",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "legendFormat": "PFM Failures"
         }
@@ -105,7 +129,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "format": "table",
           "instant": true
@@ -161,7 +185,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "format": "table",
           "instant": true
@@ -191,7 +215,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "format": "table",
           "instant": true
@@ -235,7 +259,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "legendFormat": "CM Failures"
         },
@@ -244,7 +268,7 @@
           "refId": "B",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "legendFormat": "PFM Failures"
         },
@@ -253,7 +277,7 @@
           "refId": "C",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "MySQL Threads Running"
         }
@@ -284,7 +308,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "format": "table",
           "instant": true

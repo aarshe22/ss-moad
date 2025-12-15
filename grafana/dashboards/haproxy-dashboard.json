@@ -1,5 +1,5 @@
 {
-  "title": "HAProxy – Traffic & Load Balancing",
+  "title": "HAProxy \u2013 Traffic & Load Balancing",
   "tags": [
     "MOAD",
     "HAProxy",
@@ -12,11 +12,35 @@
   "templating": {
     "list": [
       {
+        "type": "datasource",
+        "name": "ds_prom",
+        "query": "Prometheus",
+        "current": {
+          "text": "Prometheus",
+          "value": "Prometheus"
+        },
+        "hide": 0,
+        "label": "Prometheus",
+        "refresh": 1
+      },
+      {
+        "type": "datasource",
+        "name": "ds_loki",
+        "query": "Loki",
+        "current": {
+          "text": "Loki",
+          "value": "Loki"
+        },
+        "hide": 0,
+        "label": "Loki",
+        "refresh": 1
+      },
+      {
         "name": "app",
         "type": "query",
         "datasource": {
           "type": "loki",
-          "uid": "Loki"
+          "uid": "${ds_loki}"
         },
         "query": {
           "query": "label_values({source_component=\"haproxy\"}, app)",
@@ -35,7 +59,7 @@
         "type": "query",
         "datasource": {
           "type": "loki",
-          "uid": "Loki"
+          "uid": "${ds_loki}"
         },
         "query": {
           "query": "label_values({source_component=\"haproxy\"}, host)",
@@ -68,7 +92,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "legendFormat": "{{app}} - {{host}}"
         }
@@ -95,7 +119,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "legendFormat": "4xx Errors/sec"
         },
@@ -104,7 +128,7 @@
           "refId": "B",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "legendFormat": "5xx Errors/sec"
         }
@@ -148,7 +172,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "format": "table",
           "instant": true
@@ -171,7 +195,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "format": "table",
           "instant": true
@@ -194,7 +218,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "format": "table",
           "instant": true
@@ -230,7 +254,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "format": "table",
           "instant": true
@@ -253,7 +277,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "format": "table",
           "instant": true
@@ -276,7 +300,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "legendFormat": "Connection Errors/sec"
         }

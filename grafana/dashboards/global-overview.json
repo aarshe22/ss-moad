@@ -1,5 +1,5 @@
 {
-  "title": "MOAD – Global Platform Overview",
+  "title": "MOAD \u2013 Global Platform Overview",
   "tags": [
     "MOAD",
     "Overview",
@@ -12,11 +12,35 @@
   "templating": {
     "list": [
       {
+        "type": "datasource",
+        "name": "ds_prom",
+        "query": "Prometheus",
+        "current": {
+          "text": "Prometheus",
+          "value": "Prometheus"
+        },
+        "hide": 0,
+        "label": "Prometheus",
+        "refresh": 1
+      },
+      {
+        "type": "datasource",
+        "name": "ds_loki",
+        "query": "Loki",
+        "current": {
+          "text": "Loki",
+          "value": "Loki"
+        },
+        "hide": 0,
+        "label": "Loki",
+        "refresh": 1
+      },
+      {
         "name": "app",
         "type": "query",
         "datasource": {
           "type": "loki",
-          "uid": "Loki"
+          "uid": "${ds_loki}"
         },
         "query": {
           "query": "label_values(app)",
@@ -36,7 +60,7 @@
         "type": "query",
         "datasource": {
           "type": "loki",
-          "uid": "Loki"
+          "uid": "${ds_loki}"
         },
         "query": {
           "query": "label_values(host)",
@@ -69,7 +93,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "legendFormat": "Active Services"
         }
@@ -126,7 +150,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "legendFormat": "{{app}} - {{host}}"
         }
@@ -158,7 +182,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "legendFormat": "{{app}}"
         }
@@ -209,7 +233,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           }
         }
       ],
@@ -262,7 +286,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "format": "table",
           "instant": true
@@ -327,7 +351,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "format": "table",
           "instant": true
@@ -392,7 +416,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "MySQL Connection Pool %"
         },
@@ -401,7 +425,7 @@
           "refId": "B",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "${ds_prom}"
           },
           "legendFormat": "InnoDB Buffer Pool %"
         }
@@ -447,7 +471,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "format": "table",
           "instant": true
@@ -487,7 +511,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "${ds_loki}"
           },
           "format": "table",
           "instant": true
