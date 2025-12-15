@@ -1,350 +1,512 @@
 {
-  "dashboard": {
-    "title": "MOAD – Global Platform Overview",
-    "tags": ["MOAD", "Overview", "Executive"],
-    "timezone": "browser",
-    "schemaVersion": 38,
-    "version": 1,
-    "refresh": "30s",
-    "templating": {
-      "list": [
+  "title": "MOAD – Global Platform Overview",
+  "tags": [
+    "MOAD",
+    "Overview",
+    "Executive"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "app",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "Loki"
+        },
+        "query": {
+          "query": "label_values(app)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "includeAll": true,
+        "multi": true,
+        "allValue": null
+      },
+      {
+        "name": "host",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "Loki"
+        },
+        "query": {
+          "query": "label_values(host)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Service Health Summary",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
         {
-          "name": "app",
-          "type": "query",
-          "datasource": {"type": "loki", "uid": "Loki"},
-          "query": {
-            "query": "label_values(app)",
-            "refId": "StandardVariableQuery"
+          "expr": "count(count by (app) (count_over_time({app=~\"$app\", host=~\"$host\"} [1m])))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
           },
-          "current": {
-            "selected": false,
-            "text": "All",
-            "value": "$__all"
-          },
-          "includeAll": true,
-          "multi": true,
-          "allValue": null
+          "legendFormat": "Active Services"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
         },
-        {
-          "name": "host",
-          "type": "query",
-          "datasource": {"type": "loki", "uid": "Loki"},
-          "query": {
-            "query": "label_values(host)",
-            "refId": "StandardVariableQuery"
-          },
-          "current": {
-            "selected": false,
-            "text": "All",
-            "value": "$__all"
-          },
-          "includeAll": true,
-          "multi": true
-        }
-      ]
-    },
-    "panels": [
-      {
-        "id": 1,
-        "title": "Service Health Summary",
-        "type": "stat",
-        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
-        "targets": [
-          {
-            "expr": "count(count by (app) (count_over_time({app=~\"$app\", host=~\"$host\"} [1m])))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "Active Services"
-          }
-        ],
-        "options": {
-          "colorMode": "value",
-          "graphMode": "area",
-          "justifyMode": "auto",
-          "orientation": "auto",
-          "reduceOptions": {
-            "values": false,
-            "calcs": ["lastNotNull"],
-            "fields": ""
-          },
-          "textMode": "auto"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {"value": 0, "color": "red"},
-                {"value": 1, "color": "yellow"},
-                {"value": 2, "color": "green"}
-              ]
-            }
-          }
-        }
+        "textMode": "auto"
       },
-      {
-        "id": 2,
-        "title": "Total Request Volume (CM + PFM)",
-        "type": "timeseries",
-        "gridPos": {"h": 8, "w": 12, "x": 6, "y": 0},
-        "targets": [
-          {
-            "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\"} | json [5m]))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "{{app}} - {{host}}"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "unit": "reqps",
-            "custom": {
-              "drawStyle": "line",
-              "lineInterpolation": "smooth",
-              "fillOpacity": 10
-            }
-          }
-        }
-      },
-      {
-        "id": 3,
-        "title": "Error Rate by Service",
-        "type": "timeseries",
-        "gridPos": {"h": 8, "w": 12, "x": 18, "y": 0},
-        "targets": [
-          {
-            "expr": "sum(rate({app=~\"$app\", host=~\"$host\", level=\"error\"} | json [5m])) by (app)",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "{{app}}"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "unit": "ops",
-            "color": {"mode": "palette-classic"},
-            "custom": {
-              "drawStyle": "line",
-              "fillOpacity": 20
-            },
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {"value": 0, "color": "green"},
-                {"value": 1, "color": "yellow"},
-                {"value": 10, "color": "red"}
-              ]
-            }
-          }
-        }
-      },
-      {
-        "id": 4,
-        "title": "Authentication Failures (Last 24h)",
-        "type": "stat",
-        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 4},
-        "targets": [
-          {
-            "expr": "sum(count_over_time({app=~\"$app\", host=~\"$host\", event_type=\"authentication\", auth_result=\"failed\"} | json [24h]))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"}
-          }
-        ],
-        "options": {
-          "colorMode": "value",
-          "graphMode": "area",
-          "reduceOptions": {
-            "values": false,
-            "calcs": ["lastNotNull"],
-            "fields": ""
-          }
-        },
-        "fieldConfig": {
-          "defaults": {
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {"value": 0, "color": "green"},
-                {"value": 10, "color": "yellow"},
-                {"value": 50, "color": "red"}
-              ]
-            }
-          }
-        }
-      },
-      {
-        "id": 5,
-        "title": "Top 10 Schools by Error Count",
-        "type": "table",
-        "gridPos": {"h": 8, "w": 12, "x": 6, "y": 4},
-        "targets": [
-          {
-            "expr": "topk(10, sum by (school_id) (count_over_time({app=~\"$app\", host=~\"$host\", level=\"error\", school_id!=\"\"} | json [1h])))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "format": "table",
-            "instant": true
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "custom": {
-              "displayMode": "list",
-              "inspect": false
-            }
-          },
-          "overrides": [
-            {
-              "matcher": {"id": "byName", "options": "school_id"},
-              "properties": [
-                {"id": "displayName", "value": "School ID"},
-                {"id": "custom.width", "value": 100}
-              ]
-            },
-            {
-              "matcher": {"id": "byName", "options": "Value"},
-              "properties": [
-                {"id": "displayName", "value": "Error Count"},
-                {"id": "custom.width", "value": 120}
-              ]
-            }
-          ]
-        }
-      },
-      {
-        "id": 6,
-        "title": "Top 10 Users by Error Count",
-        "type": "table",
-        "gridPos": {"h": 8, "w": 12, "x": 18, "y": 4},
-        "targets": [
-          {
-            "expr": "topk(10, sum by (username) (count_over_time({app=~\"$app\", host=~\"$host\", level=\"error\", username!=\"\"} | json [1h])))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "format": "table",
-            "instant": true
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "custom": {
-              "displayMode": "list",
-              "inspect": false
-            }
-          },
-          "overrides": [
-            {
-              "matcher": {"id": "byName", "options": "username"},
-              "properties": [
-                {"id": "displayName", "value": "Username"},
-                {"id": "custom.width", "value": 150}
-              ]
-            },
-            {
-              "matcher": {"id": "byName", "options": "Value"},
-              "properties": [
-                {"id": "displayName", "value": "Error Count"},
-                {"id": "custom.width", "value": 120}
-              ]
-            }
-          ]
-        }
-      },
-      {
-        "id": 7,
-        "title": "System Resource Saturation",
-        "type": "timeseries",
-        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12},
-        "targets": [
-          {
-            "expr": "mysql_global_status_threads_connected / mysql_global_variables_max_connections * 100",
-            "refId": "A",
-            "datasource": {"type": "prometheus", "uid": "Prometheus"},
-            "legendFormat": "MySQL Connection Pool %"
-          },
-          {
-            "expr": "mysql_global_status_innodb_buffer_pool_bytes_data / mysql_global_variables_innodb_buffer_pool_size * 100",
-            "refId": "B",
-            "datasource": {"type": "prometheus", "uid": "Prometheus"},
-            "legendFormat": "InnoDB Buffer Pool %"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "unit": "percent",
-            "min": 0,
-            "max": 100,
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {"value": 0, "color": "green"},
-                {"value": 70, "color": "yellow"},
-                {"value": 90, "color": "red"}
-              ]
-            }
-          }
-        }
-      },
-      {
-        "id": 8,
-        "title": "Error Rate by Event Category",
-        "type": "piechart",
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
-        "targets": [
-          {
-            "expr": "sum(count_over_time({app=~\"$app\", host=~\"$host\", level=\"error\"} | json [1h])) by (event_category)",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "format": "table",
-            "instant": true
-          }
-        ],
-        "options": {
-          "reduceOptions": {
-            "values": false,
-            "calcs": ["lastNotNull"],
-            "fields": ""
-          },
-          "pieType": "pie",
-          "tooltip": {
-            "mode": "single"
-          },
-          "legend": {
-            "displayMode": "table",
-            "placement": "right"
-          }
-        }
-      },
-      {
-        "id": 9,
-        "title": "HTTP Status Code Distribution",
-        "type": "barchart",
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
-        "targets": [
-          {
-            "expr": "sum(count_over_time({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\", http_status!=\"\"} | json [1h])) by (http_status)",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "format": "table",
-            "instant": true
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic"
-            },
-            "custom": {
-              "hideFrom": {
-                "tooltip": false,
-                "viz": false,
-                "legend": false
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": 0,
+                "color": "red"
+              },
+              {
+                "value": 1,
+                "color": "yellow"
+              },
+              {
+                "value": 2,
+                "color": "green"
               }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Total Request Volume (CM + PFM)",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 6,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\"} | json [5m]))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "legendFormat": "{{app}} - {{host}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Error Rate by Service",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 18,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum(rate({app=~\"$app\", host=~\"$host\", level=\"error\"} | json [5m])) by (app)",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "legendFormat": "{{app}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": 0,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "yellow"
+              },
+              {
+                "value": 10,
+                "color": "red"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Authentication Failures (Last 24h)",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 4
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({app=~\"$app\", host=~\"$host\", event_type=\"authentication\", auth_result=\"failed\"} | json [24h]))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          }
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": 0,
+                "color": "green"
+              },
+              {
+                "value": 10,
+                "color": "yellow"
+              },
+              {
+                "value": 50,
+                "color": "red"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Top 10 Schools by Error Count",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 6,
+        "y": 4
+      },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (school_id) (count_over_time({app=~\"$app\", host=~\"$host\", level=\"error\", school_id!=\"\"} | json [1h])))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "displayMode": "list",
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "school_id"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "School ID"
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Error Count"
+              },
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "title": "Top 10 Users by Error Count",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 18,
+        "y": 4
+      },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (username) (count_over_time({app=~\"$app\", host=~\"$host\", level=\"error\", username!=\"\"} | json [1h])))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "displayMode": "list",
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "username"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Username"
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Error Count"
+              },
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "title": "System Resource Saturation",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 12
+      },
+      "targets": [
+        {
+          "expr": "mysql_global_status_threads_connected / mysql_global_variables_max_connections * 100",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "legendFormat": "MySQL Connection Pool %"
+        },
+        {
+          "expr": "mysql_global_status_innodb_buffer_pool_bytes_data / mysql_global_variables_innodb_buffer_pool_size * 100",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "legendFormat": "InnoDB Buffer Pool %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": 0,
+                "color": "green"
+              },
+              {
+                "value": 70,
+                "color": "yellow"
+              },
+              {
+                "value": 90,
+                "color": "red"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Error Rate by Event Category",
+      "type": "piechart",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({app=~\"$app\", host=~\"$host\", level=\"error\"} | json [1h])) by (event_category)",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "pieType": "pie",
+        "tooltip": {
+          "mode": "single"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "HTTP Status Code Distribution",
+      "type": "barchart",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\", http_status!=\"\"} | json [1h])) by (http_status)",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
             }
           }
         }
       }
-    ]
-  }
+    }
+  ]
 }
-

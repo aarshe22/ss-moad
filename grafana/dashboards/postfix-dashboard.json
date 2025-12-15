@@ -1,231 +1,331 @@
 {
-  "dashboard": {
-    "title": "Postfix – Mail Flow & Delivery",
-    "tags": ["MOAD", "Postfix", "Email", "Infrastructure"],
-    "timezone": "browser",
-    "schemaVersion": 38,
-    "version": 1,
-    "refresh": "30s",
-    "templating": {
-      "list": [
+  "title": "Postfix – Mail Flow & Delivery",
+  "tags": [
+    "MOAD",
+    "Postfix",
+    "Email",
+    "Infrastructure"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "app",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "Loki"
+        },
+        "query": {
+          "query": "label_values({source_component=\"postfix\"}, app)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "includeAll": true,
+        "multi": true
+      },
+      {
+        "name": "host",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "Loki"
+        },
+        "query": {
+          "query": "label_values({source_component=\"postfix\"}, host)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Messages Received/Sent",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
         {
-          "name": "app",
-          "type": "query",
-          "datasource": {"type": "loki", "uid": "Loki"},
-          "query": {
-            "query": "label_values({source_component=\"postfix\"}, app)",
-            "refId": "StandardVariableQuery"
+          "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", event_type=\"email\", email_outcome=\"sent\"} | json [5m]))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
           },
-          "current": {
-            "selected": false,
-            "text": "All",
-            "value": "$__all"
-          },
-          "includeAll": true,
-          "multi": true
+          "legendFormat": "Sent - {{app}}"
         },
         {
-          "name": "host",
-          "type": "query",
-          "datasource": {"type": "loki", "uid": "Loki"},
-          "query": {
-            "query": "label_values({source_component=\"postfix\"}, host)",
-            "refId": "StandardVariableQuery"
+          "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", event_type=\"email\"} | json [5m]))",
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
           },
-          "current": {
-            "selected": false,
-            "text": "All",
-            "value": "$__all"
-          },
-          "includeAll": true,
-          "multi": true
+          "legendFormat": "Total - {{app}}"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        }
+      }
     },
-    "panels": [
-      {
-        "id": 1,
-        "title": "Messages Received/Sent",
-        "type": "timeseries",
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
-        "targets": [
-          {
-            "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", event_type=\"email\", email_outcome=\"sent\"} | json [5m]))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "Sent - {{app}}"
-          },
-          {
-            "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", event_type=\"email\"} | json [5m]))",
-            "refId": "B",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "Total - {{app}}"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "unit": "ops"
-          }
-        }
+    {
+      "id": 2,
+      "title": "Email Outcome Distribution",
+      "type": "piechart",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
       },
-      {
-        "id": 2,
-        "title": "Email Outcome Distribution",
-        "type": "piechart",
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
-        "targets": [
-          {
-            "expr": "sum(count_over_time({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", email_outcome!=\"\"} | json [1h])) by (email_outcome)",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "format": "table",
-            "instant": true
-          }
-        ],
-        "options": {
-          "reduceOptions": {
-            "values": false,
-            "calcs": ["lastNotNull"]
+      "targets": [
+        {
+          "expr": "sum(count_over_time({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", email_outcome!=\"\"} | json [1h])) by (email_outcome)",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
           },
-          "pieType": "pie",
-          "legend": {
-            "displayMode": "table",
-            "placement": "right"
-          }
+          "format": "table",
+          "instant": true
         }
-      },
-      {
-        "id": 3,
-        "title": "Deferred Messages",
-        "type": "stat",
-        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8},
-        "targets": [
-          {
-            "expr": "sum(count_over_time({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", email_outcome=\"deferred\"} | json [1h]))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"}
-          }
-        ],
-        "options": {
-          "colorMode": "value",
-          "reduceOptions": {
-            "values": false,
-            "calcs": ["lastNotNull"]
-          }
+      ],
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ]
         },
-        "fieldConfig": {
-          "defaults": {
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {"value": 0, "color": "green"},
-                {"value": 10, "color": "yellow"},
-                {"value": 50, "color": "red"}
-              ]
-            }
+        "pieType": "pie",
+        "legend": {
+          "displayMode": "table",
+          "placement": "right"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Deferred Messages",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", email_outcome=\"deferred\"} | json [1h]))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
           }
         }
-      },
-      {
-        "id": 4,
-        "title": "Bounce Rate",
-        "type": "stat",
-        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 8},
-        "targets": [
-          {
-            "expr": "sum(count_over_time({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", email_outcome=\"bounced\"} | json [1h]))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"}
-          }
-        ],
-        "options": {
-          "colorMode": "value",
-          "reduceOptions": {
-            "values": false,
-            "calcs": ["lastNotNull"]
-          }
-        },
-        "fieldConfig": {
-          "defaults": {
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {"value": 0, "color": "green"},
-                {"value": 5, "color": "yellow"},
-                {"value": 20, "color": "red"}
-              ]
-            }
-          }
+      ],
+      "options": {
+        "colorMode": "value",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ]
         }
       },
-      {
-        "id": 5,
-        "title": "Top Sender Domains",
-        "type": "table",
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
-        "targets": [
-          {
-            "expr": "topk(10, sum by (sender_email) (count_over_time({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", sender_email!=\"\"} | json | regexp \"(?P<domain>[^@]+)$\" [1h])))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "format": "table",
-            "instant": true
-          }
-        ]
-      },
-      {
-        "id": 6,
-        "title": "Top Recipient Domains",
-        "type": "table",
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
-        "targets": [
-          {
-            "expr": "topk(10, sum by (recipient_email) (count_over_time({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", recipient_email!=\"\"} | json [1h])))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "format": "table",
-            "instant": true
-          }
-        ]
-      },
-      {
-        "id": 7,
-        "title": "Email Outcome Rate Over Time",
-        "type": "timeseries",
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
-        "targets": [
-          {
-            "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", email_outcome=\"sent\"} | json [5m]))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "Sent"
-          },
-          {
-            "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", email_outcome=\"bounced\"} | json [5m]))",
-            "refId": "B",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "Bounced"
-          },
-          {
-            "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", email_outcome=\"deferred\"} | json [5m]))",
-            "refId": "C",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "Deferred"
-          },
-          {
-            "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", email_outcome=\"rejected\"} | json [5m]))",
-            "refId": "D",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "Rejected"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "unit": "ops"
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": 0,
+                "color": "green"
+              },
+              {
+                "value": 10,
+                "color": "yellow"
+              },
+              {
+                "value": 50,
+                "color": "red"
+              }
+            ]
           }
         }
       }
-    ]
-  }
+    },
+    {
+      "id": 4,
+      "title": "Bounce Rate",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", email_outcome=\"bounced\"} | json [1h]))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          }
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": 0,
+                "color": "green"
+              },
+              {
+                "value": 5,
+                "color": "yellow"
+              },
+              {
+                "value": 20,
+                "color": "red"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Top Sender Domains",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (sender_email) (count_over_time({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", sender_email!=\"\"} | json | regexp \"(?P<domain>[^@]+)$\" [1h])))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "format": "table",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Top Recipient Domains",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (recipient_email) (count_over_time({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", recipient_email!=\"\"} | json [1h])))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "format": "table",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Email Outcome Rate Over Time",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "targets": [
+        {
+          "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", email_outcome=\"sent\"} | json [5m]))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "legendFormat": "Sent"
+        },
+        {
+          "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", email_outcome=\"bounced\"} | json [5m]))",
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "legendFormat": "Bounced"
+        },
+        {
+          "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", email_outcome=\"deferred\"} | json [5m]))",
+          "refId": "C",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "legendFormat": "Deferred"
+        },
+        {
+          "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"postfix\", email_outcome=\"rejected\"} | json [5m]))",
+          "refId": "D",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "legendFormat": "Rejected"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        }
+      }
+    }
+  ]
 }
-

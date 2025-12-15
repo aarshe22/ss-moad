@@ -1,275 +1,395 @@
 {
-  "dashboard": {
-    "title": "Conference Manager (CM) – Application Metrics",
-    "tags": ["MOAD", "CM", "Application"],
-    "timezone": "browser",
-    "schemaVersion": 38,
-    "version": 1,
-    "refresh": "30s",
-    "templating": {
-      "list": [
-        {
-          "name": "host",
-          "type": "query",
-          "datasource": {"type": "loki", "uid": "Loki"},
-          "query": {
-            "query": "label_values({app=\"CM\"}, host)",
-            "refId": "StandardVariableQuery"
-          },
-          "current": {
-            "selected": false,
-            "text": "All",
-            "value": "$__all"
-          },
-          "includeAll": true,
-          "multi": true
-        }
-      ]
-    },
-    "panels": [
+  "title": "Conference Manager (CM) – Application Metrics",
+  "tags": [
+    "MOAD",
+    "CM",
+    "Application"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "templating": {
+    "list": [
       {
-        "id": 1,
-        "title": "CM Request Rate",
-        "type": "timeseries",
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
-        "targets": [
-          {
-            "expr": "sum(rate({app=\"CM\", host=~\"$host\", source_component=\"haproxy\"} | json [5m]))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "{{host}}"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "unit": "reqps",
-            "custom": {
-              "drawStyle": "line",
-              "fillOpacity": 10
-            }
-          }
-        }
-      },
-      {
-        "id": 2,
-        "title": "Authentication Attempts vs Failures",
-        "type": "timeseries",
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
-        "targets": [
-          {
-            "expr": "sum(rate({app=\"CM\", host=~\"$host\", event_type=\"authentication\", auth_result=\"success\"} | json [5m]))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "Success"
-          },
-          {
-            "expr": "sum(rate({app=\"CM\", host=~\"$host\", event_type=\"authentication\", auth_result=\"failed\"} | json [5m]))",
-            "refId": "B",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "Failed"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "unit": "ops",
-            "color": {"mode": "palette-classic"},
-            "custom": {
-              "drawStyle": "line",
-              "fillOpacity": 20
-            }
-          }
-        }
-      },
-      {
-        "id": 3,
-        "title": "Session Creation Failures",
-        "type": "stat",
-        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8},
-        "targets": [
-          {
-            "expr": "sum(count_over_time({app=\"CM\", host=~\"$host\", level=\"error\"} |= \"session\" | json [1h]))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"}
-          }
-        ],
-        "options": {
-          "colorMode": "value",
-          "graphMode": "area",
-          "reduceOptions": {
-            "values": false,
-            "calcs": ["lastNotNull"]
-          }
+        "name": "host",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "Loki"
         },
-        "fieldConfig": {
-          "defaults": {
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {"value": 0, "color": "green"},
-                {"value": 1, "color": "yellow"},
-                {"value": 10, "color": "red"}
-              ]
-            }
-          }
-        }
+        "query": {
+          "query": "label_values({app=\"CM\"}, host)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "CM Request Rate",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
       },
-      {
-        "id": 4,
-        "title": "Top CM Error Types",
-        "type": "table",
-        "gridPos": {"h": 8, "w": 12, "x": 6, "y": 8},
-        "targets": [
-          {
-            "expr": "topk(10, sum by (event_type) (count_over_time({app=\"CM\", host=~\"$host\", level=\"error\"} | json [1h])))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "format": "table",
-            "instant": true
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "custom": {
-              "displayMode": "list"
-            }
+      "targets": [
+        {
+          "expr": "sum(rate({app=\"CM\", host=~\"$host\", source_component=\"haproxy\"} | json [5m]))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
           },
-          "overrides": [
-            {
-              "matcher": {"id": "byName", "options": "event_type"},
-              "properties": [
-                {"id": "displayName", "value": "Error Type"}
-              ]
-            },
-            {
-              "matcher": {"id": "byName", "options": "Value"},
-              "properties": [
-                {"id": "displayName", "value": "Count"}
-              ]
-            }
-          ]
+          "legendFormat": "{{host}}"
         }
-      },
-      {
-        "id": 5,
-        "title": "Top Schools by CM Errors",
-        "type": "table",
-        "gridPos": {"h": 8, "w": 12, "x": 18, "y": 8},
-        "targets": [
-          {
-            "expr": "topk(10, sum by (school_id) (count_over_time({app=\"CM\", host=~\"$host\", level=\"error\", school_id!=\"\"} | json [1h])))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "format": "table",
-            "instant": true
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "custom": {
-              "displayMode": "list"
-            }
-          }
-        }
-      },
-      {
-        "id": 6,
-        "title": "Top Users by CM Errors",
-        "type": "table",
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
-        "targets": [
-          {
-            "expr": "topk(10, sum by (username) (count_over_time({app=\"CM\", host=~\"$host\", level=\"error\", username!=\"\"} | json [1h])))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "format": "table",
-            "instant": true
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "custom": {
-              "displayMode": "list"
-            }
-          }
-        }
-      },
-      {
-        "id": 7,
-        "title": "HTTP Status Code Distribution",
-        "type": "barchart",
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
-        "targets": [
-          {
-            "expr": "sum(count_over_time({app=\"CM\", host=~\"$host\", source_component=\"haproxy\", http_status!=\"\"} | json [1h])) by (http_status)",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "format": "table",
-            "instant": true
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic"
-            }
-          }
-        }
-      },
-      {
-        "id": 8,
-        "title": "HTTP 4xx/5xx Error Rate",
-        "type": "timeseries",
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
-        "targets": [
-          {
-            "expr": "sum(rate({app=\"CM\", host=~\"$host\", source_component=\"haproxy\", http_status=~\"4..\"} | json [5m]))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "4xx Errors/sec"
-          },
-          {
-            "expr": "sum(rate({app=\"CM\", host=~\"$host\", source_component=\"haproxy\", http_status=~\"5..\"} | json [5m]))",
-            "refId": "B",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "5xx Errors/sec"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "unit": "ops",
-            "color": {"mode": "palette-classic"},
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {"value": 0, "color": "green"},
-                {"value": 1, "color": "yellow"},
-                {"value": 5, "color": "red"}
-              ]
-            }
-          }
-        }
-      },
-      {
-        "id": 9,
-        "title": "CM Error Rate Over Time",
-        "type": "timeseries",
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
-        "targets": [
-          {
-            "expr": "sum(rate({app=\"CM\", host=~\"$host\", level=\"error\"} | json [5m])) by (event_category)",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "{{event_category}}"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "unit": "ops",
-            "color": {"mode": "palette-classic"}
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10
           }
         }
       }
-    ]
-  }
+    },
+    {
+      "id": 2,
+      "title": "Authentication Attempts vs Failures",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum(rate({app=\"CM\", host=~\"$host\", event_type=\"authentication\", auth_result=\"success\"} | json [5m]))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "legendFormat": "Success"
+        },
+        {
+          "expr": "sum(rate({app=\"CM\", host=~\"$host\", event_type=\"authentication\", auth_result=\"failed\"} | json [5m]))",
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "legendFormat": "Failed"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Session Creation Failures",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({app=\"CM\", host=~\"$host\", level=\"error\"} |= \"session\" | json [1h]))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          }
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": 0,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "yellow"
+              },
+              {
+                "value": 10,
+                "color": "red"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Top CM Error Types",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 6,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (event_type) (count_over_time({app=\"CM\", host=~\"$host\", level=\"error\"} | json [1h])))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "displayMode": "list"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "event_type"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Error Type"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Count"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "title": "Top Schools by CM Errors",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 18,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (school_id) (count_over_time({app=\"CM\", host=~\"$host\", level=\"error\", school_id!=\"\"} | json [1h])))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "displayMode": "list"
+          }
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Top Users by CM Errors",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (username) (count_over_time({app=\"CM\", host=~\"$host\", level=\"error\", username!=\"\"} | json [1h])))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "displayMode": "list"
+          }
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "HTTP Status Code Distribution",
+      "type": "barchart",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({app=\"CM\", host=~\"$host\", source_component=\"haproxy\", http_status!=\"\"} | json [1h])) by (http_status)",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        }
+      }
+    },
+    {
+      "id": 8,
+      "title": "HTTP 4xx/5xx Error Rate",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "targets": [
+        {
+          "expr": "sum(rate({app=\"CM\", host=~\"$host\", source_component=\"haproxy\", http_status=~\"4..\"} | json [5m]))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "legendFormat": "4xx Errors/sec"
+        },
+        {
+          "expr": "sum(rate({app=\"CM\", host=~\"$host\", source_component=\"haproxy\", http_status=~\"5..\"} | json [5m]))",
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "legendFormat": "5xx Errors/sec"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": 0,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "yellow"
+              },
+              {
+                "value": 5,
+                "color": "red"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "CM Error Rate Over Time",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "targets": [
+        {
+          "expr": "sum(rate({app=\"CM\", host=~\"$host\", level=\"error\"} | json [5m])) by (event_category)",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "legendFormat": "{{event_category}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "palette-classic"
+          }
+        }
+      }
+    }
+  ]
 }
-

@@ -1,206 +1,291 @@
 {
-  "dashboard": {
-    "title": "HAProxy – Traffic & Load Balancing",
-    "tags": ["MOAD", "HAProxy", "Infrastructure"],
-    "timezone": "browser",
-    "schemaVersion": 38,
-    "version": 1,
-    "refresh": "30s",
-    "templating": {
-      "list": [
+  "title": "HAProxy – Traffic & Load Balancing",
+  "tags": [
+    "MOAD",
+    "HAProxy",
+    "Infrastructure"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "app",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "Loki"
+        },
+        "query": {
+          "query": "label_values({source_component=\"haproxy\"}, app)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "includeAll": true,
+        "multi": true
+      },
+      {
+        "name": "host",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "Loki"
+        },
+        "query": {
+          "query": "label_values({source_component=\"haproxy\"}, host)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Frontend Request Rate",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
         {
-          "name": "app",
-          "type": "query",
-          "datasource": {"type": "loki", "uid": "Loki"},
-          "query": {
-            "query": "label_values({source_component=\"haproxy\"}, app)",
-            "refId": "StandardVariableQuery"
+          "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\"} | json [5m])) by (app, host)",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
           },
-          "current": {
-            "selected": false,
-            "text": "All",
-            "value": "$__all"
+          "legendFormat": "{{app}} - {{host}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "HTTP 4xx / 5xx Rates",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\", http_status=~\"4..\"} | json [5m]))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
           },
-          "includeAll": true,
-          "multi": true
+          "legendFormat": "4xx Errors/sec"
         },
         {
-          "name": "host",
-          "type": "query",
-          "datasource": {"type": "loki", "uid": "Loki"},
-          "query": {
-            "query": "label_values({source_component=\"haproxy\"}, host)",
-            "refId": "StandardVariableQuery"
+          "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\", http_status=~\"5..\"} | json [5m]))",
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
           },
-          "current": {
-            "selected": false,
-            "text": "All",
-            "value": "$__all"
-          },
-          "includeAll": true,
-          "multi": true
+          "legendFormat": "5xx Errors/sec"
         }
-      ]
-    },
-    "panels": [
-      {
-        "id": 1,
-        "title": "Frontend Request Rate",
-        "type": "timeseries",
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
-        "targets": [
-          {
-            "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\"} | json [5m])) by (app, host)",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "{{app}} - {{host}}"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "unit": "reqps"
-          }
-        }
-      },
-      {
-        "id": 2,
-        "title": "HTTP 4xx / 5xx Rates",
-        "type": "timeseries",
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
-        "targets": [
-          {
-            "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\", http_status=~\"4..\"} | json [5m]))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "4xx Errors/sec"
-          },
-          {
-            "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\", http_status=~\"5..\"} | json [5m]))",
-            "refId": "B",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "5xx Errors/sec"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "unit": "ops",
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {"value": 0, "color": "green"},
-                {"value": 1, "color": "yellow"},
-                {"value": 5, "color": "red"}
-              ]
-            }
-          }
-        }
-      },
-      {
-        "id": 3,
-        "title": "HTTP Status Code Distribution",
-        "type": "barchart",
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
-        "targets": [
-          {
-            "expr": "sum(count_over_time({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\", http_status!=\"\"} | json [1h])) by (http_status)",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "format": "table",
-            "instant": true
-          }
-        ]
-      },
-      {
-        "id": 4,
-        "title": "Top Client IPs by Error Rate",
-        "type": "table",
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
-        "targets": [
-          {
-            "expr": "topk(10, sum by (client_ip) (rate({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\", http_status=~\"[45]..\", client_ip!=\"\"} | json [5m])))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "format": "table",
-            "instant": true
-          }
-        ]
-      },
-      {
-        "id": 5,
-        "title": "Device Type Distribution",
-        "type": "piechart",
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
-        "targets": [
-          {
-            "expr": "sum(count_over_time({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\", device!=\"\"} | json [1h])) by (device)",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "format": "table",
-            "instant": true
-          }
-        ],
-        "options": {
-          "reduceOptions": {
-            "values": false,
-            "calcs": ["lastNotNull"]
-          },
-          "pieType": "pie",
-          "legend": {
-            "displayMode": "table",
-            "placement": "right"
-          }
-        }
-      },
-      {
-        "id": 6,
-        "title": "HTTP Method Distribution",
-        "type": "barchart",
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
-        "targets": [
-          {
-            "expr": "sum(count_over_time({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\", http_method!=\"\"} | json [1h])) by (http_method)",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "format": "table",
-            "instant": true
-          }
-        ]
-      },
-      {
-        "id": 7,
-        "title": "Request Rate by School Subdomain",
-        "type": "table",
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
-        "targets": [
-          {
-            "expr": "topk(10, sum by (school_subdomain) (rate({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\", school_subdomain!=\"\"} | json [5m])))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "format": "table",
-            "instant": true
-          }
-        ]
-      },
-      {
-        "id": 8,
-        "title": "Connection Errors",
-        "type": "timeseries",
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
-        "targets": [
-          {
-            "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\", level=\"error\"} | json [5m]))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "Connection Errors/sec"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "unit": "ops"
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": 0,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "yellow"
+              },
+              {
+                "value": 5,
+                "color": "red"
+              }
+            ]
           }
         }
       }
-    ]
-  }
+    },
+    {
+      "id": 3,
+      "title": "HTTP Status Code Distribution",
+      "type": "barchart",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\", http_status!=\"\"} | json [1h])) by (http_status)",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "format": "table",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Top Client IPs by Error Rate",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (client_ip) (rate({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\", http_status=~\"[45]..\", client_ip!=\"\"} | json [5m])))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "format": "table",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Device Type Distribution",
+      "type": "piechart",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\", device!=\"\"} | json [1h])) by (device)",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "pieType": "pie",
+        "legend": {
+          "displayMode": "table",
+          "placement": "right"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "HTTP Method Distribution",
+      "type": "barchart",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\", http_method!=\"\"} | json [1h])) by (http_method)",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "format": "table",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Request Rate by School Subdomain",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (school_subdomain) (rate({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\", school_subdomain!=\"\"} | json [5m])))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "format": "table",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Connection Errors",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "targets": [
+        {
+          "expr": "sum(rate({app=~\"$app\", host=~\"$host\", source_component=\"haproxy\", level=\"error\"} | json [5m]))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "legendFormat": "Connection Errors/sec"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        }
+      }
+    }
+  ]
 }
-

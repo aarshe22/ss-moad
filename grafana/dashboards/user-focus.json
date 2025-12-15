@@ -1,212 +1,295 @@
 {
-  "dashboard": {
-    "title": "User / Student Error Analysis",
-    "tags": ["MOAD", "User", "Student", "Drill-Down"],
-    "timezone": "browser",
-    "schemaVersion": 38,
-    "version": 1,
-    "refresh": "30s",
-    "templating": {
-      "list": [
-        {
-          "name": "username",
-          "type": "query",
-          "datasource": {"type": "loki", "uid": "Loki"},
-          "query": {
-            "query": "label_values(username)",
-            "refId": "StandardVariableQuery"
-          },
-          "current": {
-            "selected": false,
-            "text": "Select User",
-            "value": ""
-          },
-          "includeAll": false,
-          "multi": false
-        }
-      ]
+  "title": "User / Student Error Analysis",
+  "tags": [
+    "MOAD",
+    "User",
+    "Student",
+    "Drill-Down"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "username",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "Loki"
+        },
+        "query": {
+          "query": "label_values(username)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {
+          "selected": false,
+          "text": "Select User",
+          "value": ""
+        },
+        "includeAll": false,
+        "multi": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Selected User: $username",
+      "type": "text",
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "content": "## Username: **$username**\n\nSelect a username from the dropdown above to analyze errors and activity for that specific user.",
+        "mode": "markdown"
+      }
     },
-    "panels": [
-      {
-        "id": 1,
-        "title": "Selected User: $username",
-        "type": "text",
-        "gridPos": {"h": 3, "w": 24, "x": 0, "y": 0},
-        "options": {
-          "content": "## Username: **$username**\n\nSelect a username from the dropdown above to analyze errors and activity for that specific user.",
-          "mode": "markdown"
-        }
+    {
+      "id": 2,
+      "title": "Errors by Service for User",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 3
       },
-      {
-        "id": 2,
-        "title": "Errors by Service for User",
-        "type": "timeseries",
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 3},
-        "targets": [
-          {
-            "expr": "sum(rate({username=\"$username\", level=\"error\"} | json [5m])) by (app)",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "{{app}}"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "unit": "ops"
-          }
-        }
-      },
-      {
-        "id": 3,
-        "title": "Auth Failures Over Time",
-        "type": "timeseries",
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 3},
-        "targets": [
-          {
-            "expr": "sum(rate({username=\"$username\", event_type=\"authentication\", auth_result=\"failed\"} | json [5m]))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "Auth Failures/sec"
+      "targets": [
+        {
+          "expr": "sum(rate({username=\"$username\", level=\"error\"} | json [5m])) by (app)",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
           },
-          {
-            "expr": "sum(rate({username=\"$username\", event_type=\"authentication\", auth_result=\"success\"} | json [5m]))",
-            "refId": "B",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "Auth Success/sec"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "unit": "ops"
-          }
+          "legendFormat": "{{app}}"
         }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Auth Failures Over Time",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 3
       },
-      {
-        "id": 4,
-        "title": "Client IP History",
-        "type": "table",
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 11},
-        "targets": [
-          {
-            "expr": "sum by (client_ip) (count_over_time({username=\"$username\", client_ip!=\"\"} | json [7d]))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "format": "table",
-            "instant": true
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "custom": {
-              "displayMode": "list"
-            }
+      "targets": [
+        {
+          "expr": "sum(rate({username=\"$username\", event_type=\"authentication\", auth_result=\"failed\"} | json [5m]))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
           },
-          "overrides": [
-            {
-              "matcher": {"id": "byName", "options": "client_ip"},
-              "properties": [
-                {"id": "displayName", "value": "Client IP"}
-              ]
-            },
-            {
-              "matcher": {"id": "byName", "options": "Value"},
-              "properties": [
-                {"id": "displayName", "value": "Events (7d)"}
-              ]
-            }
-          ]
+          "legendFormat": "Auth Failures/sec"
+        },
+        {
+          "expr": "sum(rate({username=\"$username\", event_type=\"authentication\", auth_result=\"success\"} | json [5m]))",
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "legendFormat": "Auth Success/sec"
         }
-      },
-      {
-        "id": 5,
-        "title": "Error Types for User",
-        "type": "table",
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 11},
-        "targets": [
-          {
-            "expr": "sum(count_over_time({username=\"$username\", level=\"error\"} | json [1h])) by (event_type)",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "format": "table",
-            "instant": true
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "custom": {
-              "displayMode": "list"
-            }
-          }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
         }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Client IP History",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 11
       },
-      {
-        "id": 6,
-        "title": "Session Lifecycle Anomalies",
-        "type": "table",
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 19},
-        "targets": [
-          {
-            "expr": "sum(count_over_time({username=\"$username\", level=~\"error|warn\"} |= \"session\" | json [24h]))",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "format": "table",
-            "instant": true
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "custom": {
-              "displayMode": "list"
-            }
-          }
+      "targets": [
+        {
+          "expr": "sum by (client_ip) (count_over_time({username=\"$username\", client_ip!=\"\"} | json [7d]))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "format": "table",
+          "instant": true
         }
-      },
-      {
-        "id": 7,
-        "title": "Last Known Successful Login",
-        "type": "stat",
-        "gridPos": {"h": 4, "w": 12, "x": 12, "y": 19},
-        "targets": [
-          {
-            "expr": "max_over_time({username=\"$username\", event_type=\"authentication\", auth_result=\"success\"} | json | unwrap timestamp [30d])",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"}
-          }
-        ],
-        "options": {
-          "colorMode": "value",
-          "graphMode": "area",
-          "reduceOptions": {
-            "values": false,
-            "calcs": ["lastNotNull"]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "displayMode": "list"
           }
         },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "dateTimeFromNow"
-          }
-        }
-      },
-      {
-        "id": 8,
-        "title": "User Activity Timeline",
-        "type": "timeseries",
-        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 27},
-        "targets": [
+        "overrides": [
           {
-            "expr": "sum(rate({username=\"$username\"} | json [5m])) by (event_type)",
-            "refId": "A",
-            "datasource": {"type": "loki", "uid": "Loki"},
-            "legendFormat": "{{event_type}}"
+            "matcher": {
+              "id": "byName",
+              "options": "client_ip"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Client IP"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Events (7d)"
+              }
+            ]
           }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "unit": "ops"
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "title": "Error Types for User",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 11
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({username=\"$username\", level=\"error\"} | json [1h])) by (event_type)",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "displayMode": "list"
           }
         }
       }
-    ]
-  }
+    },
+    {
+      "id": 6,
+      "title": "Session Lifecycle Anomalies",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 19
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({username=\"$username\", level=~\"error|warn\"} |= \"session\" | json [24h]))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "displayMode": "list"
+          }
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Last Known Successful Login",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 19
+      },
+      "targets": [
+        {
+          "expr": "max_over_time({username=\"$username\", event_type=\"authentication\", auth_result=\"success\"} | json | unwrap timestamp [30d])",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          }
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeFromNow"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "title": "User Activity Timeline",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 27
+      },
+      "targets": [
+        {
+          "expr": "sum(rate({username=\"$username\"} | json [5m])) by (event_type)",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "legendFormat": "{{event_type}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        }
+      }
+    }
+  ]
 }
-
