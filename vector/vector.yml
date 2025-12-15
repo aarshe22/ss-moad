@@ -55,6 +55,7 @@ sources:
     type: file
     include:
       - /data/moad/logs/app1/var/log/mail.log
+    start_at_beginning: true
     host_key: host
 
   # Postfix mail logs - PFM
@@ -62,6 +63,7 @@ sources:
     type: file
     include:
       - /data/moad/logs/app2/var/log/mail.log
+    start_at_beginning: true
     host_key: host
 
 # ============================================================================
