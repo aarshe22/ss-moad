@@ -12,7 +12,7 @@ services:
     volumes:
       - ./vector/vector.yml:/etc/vector/vector.yml:ro
       - ./vector-entrypoint.sh:/entrypoint.sh:ro
-      - /data/moad/logs:/data/moad/logs:ro
+      - /data/logs:/data/moad/logs:ro  # NFS mounts are at /data/logs/app1 and /data/logs/app2
       - ./data/vector/structured:/var/lib/vector/structured
     command: ["--config-dir", "/etc/vector"]
     restart: unless-stopped
