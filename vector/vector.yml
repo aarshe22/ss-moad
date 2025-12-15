@@ -126,10 +126,13 @@ transforms:
         .auth_result = match(.message, r'(?i)(success|successful|failed|failure|denied|invalid)')
         if is_null(.auth_result) {
           .auth_result = "unknown"
+        } else if !is_string(.auth_result) {
+          # If match returned non-string, convert to string or default
+          .auth_result = "unknown"
         }
-        if match(string!(.auth_result), r'(?i)(success|successful)') {
+        if is_string(.auth_result) && match(string!(.auth_result), r'(?i)(success|successful)') {
           .auth_result = "success"
-        } else if match(string!(.auth_result), r'(?i)(failed|failure|denied|invalid)') {
+        } else if is_string(.auth_result) && match(string!(.auth_result), r'(?i)(failed|failure|denied|invalid)') {
           .auth_result = "failed"
         }
         
@@ -729,6 +732,24 @@ transforms:
       # Ensure .event_type is always set
       if is_null(.event_type) {
         .event_type = "unknown"  # Default fallback
+      }
+      
+      # Ensure .source_component is always set (required for Loki labels)
+      if is_null(.source_component) {
+        # Try to infer from file path or other fields
+        if !is_null(.file) {
+          if match(string!(.file), r'tomcat') {
+            .source_component = "tomcat"
+          } else if match(string!(.file), r'haproxy') {
+            .source_component = "haproxy"
+          } else if match(string!(.file), r'mail') {
+            .source_component = "postfix"
+          }
+        }
+        # Default fallback
+        if is_null(.source_component) {
+          .source_component = "unknown"
+        }
       }
       
       # Ensure consistent field naming for MySQL joins
