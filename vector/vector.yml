@@ -24,7 +24,7 @@ sources:
   tomcat_pfm:
     type: file
     include:
-      - /data/moad/logs/app2/usr/share/apache-tomcat-8.5.94/logs/catalina.out
+      - /data/moad/logs/app2/usr/share/tomcat8/logs/catalina.out
     multiline:
       start_pattern: '^\d{4}-\d{2}-\d{2}'
       mode: continue_through
