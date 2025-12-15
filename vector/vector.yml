@@ -459,26 +459,42 @@ transforms:
       .http_status = parsed.status
       .user_agent = parsed.agent
       
+      # Ensure string types for matching operations
+      if !is_null(.http_path) {
+        .http_path = string!(.http_path)
+      } else {
+        .http_path = ""
+      }
+      if !is_null(.user_agent) {
+        .user_agent = string!(.user_agent)
+      } else {
+        .user_agent = ""
+      }
+      
       # Extract school from URL path (for schools.id join)
-      .school_subdomain = match(.http_path, r'/([a-z0-9-]+)/')
-      .school_id = match(.http_path, r'(?:school|schoolId)[\s:=/]+(\d+)')
-      if !is_null(.school_id) {
-        .school_id, err = to_int(string!(.school_id))
-        if !is_null(err) {
-          .school_id = null
+      if .http_path != "" {
+        .school_subdomain = match(.http_path, r'/([a-z0-9-]+)/')
+        .school_id = match(.http_path, r'(?:school|schoolId)[\s:=/]+(\d+)')
+        if !is_null(.school_id) {
+          .school_id, err = to_int(string!(.school_id))
+          if !is_null(err) {
+            .school_id = null
+          }
         }
       }
       
       # Device classification
       .device = "unknown"
-      if match(.user_agent, r'(?i)(mobile|android|iphone|ipad)') {
-        .device = "mobile"
-      } else if match(.user_agent, r'(?i)(desktop|windows|mac|linux)') {
-        .device = "desktop"
+      if .user_agent != "" {
+        if match(.user_agent, r'(?i)(mobile|android|iphone|ipad)') {
+          .device = "mobile"
+        } else if match(.user_agent, r'(?i)(desktop|windows|mac|linux)') {
+          .device = "desktop"
+        }
       }
       
       # Authentication events from HTTP paths
-      if match(.http_path, r'(?i)(login|auth|authenticate)') {
+      if .http_path != "" && match(.http_path, r'(?i)(login|auth|authenticate)') {
         .event_type = "authentication"
         .event_category = "security"
         
@@ -516,21 +532,38 @@ transforms:
       .http_path = parsed.request
       .http_status = parsed.status
       .user_agent = parsed.agent
-      .school_subdomain = match(.http_path, r'/([a-z0-9-]+)/')
-      .school_id = match(.http_path, r'(?:school|schoolId)[\s:=/]+(\d+)')
-      if !is_null(.school_id) {
-        .school_id, err = to_int(string!(.school_id))
-        if !is_null(err) {
-          .school_id = null
+      
+      # Ensure string types for matching operations
+      if !is_null(.http_path) {
+        .http_path = string!(.http_path)
+      } else {
+        .http_path = ""
+      }
+      if !is_null(.user_agent) {
+        .user_agent = string!(.user_agent)
+      } else {
+        .user_agent = ""
+      }
+      
+      if .http_path != "" {
+        .school_subdomain = match(.http_path, r'/([a-z0-9-]+)/')
+        .school_id = match(.http_path, r'(?:school|schoolId)[\s:=/]+(\d+)')
+        if !is_null(.school_id) {
+          .school_id, err = to_int(string!(.school_id))
+          if !is_null(err) {
+            .school_id = null
+          }
         }
       }
       .device = "unknown"
-      if match(.user_agent, r'(?i)(mobile|android|iphone|ipad)') {
-        .device = "mobile"
-      } else if match(.user_agent, r'(?i)(desktop|windows|mac|linux)') {
-        .device = "desktop"
+      if .user_agent != "" {
+        if match(.user_agent, r'(?i)(mobile|android|iphone|ipad)') {
+          .device = "mobile"
+        } else if match(.user_agent, r'(?i)(desktop|windows|mac|linux)') {
+          .device = "desktop"
+        }
       }
-      if match(.http_path, r'(?i)(login|auth|authenticate)') {
+      if .http_path != "" && match(.http_path, r'(?i)(login|auth|authenticate)') {
         .event_type = "authentication"
         .event_category = "security"
         .username = match(.http_path, r'(?:user|username|login)[=/]([a-zA-Z0-9._-]+)')
