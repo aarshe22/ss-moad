@@ -16,6 +16,7 @@ sources:
       # Example: 14-Dec-2025 02:05:11.931 SEVERE [...]
       start_pattern: '^\d{2}-[A-Za-z]{3}-\d{4}\s+\d{2}:\d{2}:\d{2}'
       mode: halt_before
+      condition_pattern: '.*'
       timeout_ms: 1000
     encoding:
       charset: utf8
@@ -29,6 +30,7 @@ sources:
     multiline:
       start_pattern: '^\d{2}-[A-Za-z]{3}-\d{4}\s+\d{2}:\d{2}:\d{2}'
       mode: halt_before
+      condition_pattern: '.*'
       timeout_ms: 1000
     encoding:
       charset: utf8
