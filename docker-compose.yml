@@ -2,6 +2,9 @@ version: '3.8'
 
 services:
   # Vector - Log ingestion and processing
+  # Version locked to 0.40.0-alpine for stability
+  # This version has been fully validated with our VRL configuration
+  # Upgrading may require VRL syntax updates - test thoroughly before upgrading
   vector:
     image: timberio/vector:0.40.0-alpine
     container_name: moad-vector

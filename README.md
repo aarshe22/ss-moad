@@ -1,6 +1,6 @@
 # MOAD - Mother Of All Dashboards
 
-**Version 0.9** - Initial deployment milestone achieved: All containers running, MOAD Manager operational.
+**Version 0.9** - Initial deployment milestone achieved: All containers running stably, Vector 0.40.0 fully validated, MOAD Manager operational.
 
 A unified observability and analytics platform for SchoolSoft operations, providing a single source of truth across logs, metrics, and relational data.
 
@@ -16,8 +16,9 @@ A unified observability and analytics platform for SchoolSoft operations, provid
 
 ### Components
 
-- **Vector**: Log ingestion, multiline reconstruction, field extraction, event classification, JSON normalization
+- **Vector 0.40.0**: Log ingestion, multiline reconstruction, field extraction, event classification, JSON normalization
   - Entrypoint script validates configuration and log paths before starting
+  - Full VRL validation compliance with proper error handling and type coercion
 - **Loki**: Log aggregation and storage
   - Entrypoint script validates configuration file before starting
 - **Prometheus**: Metrics collection
@@ -264,9 +265,19 @@ The script will:
 3. Show color-coded menu of operations
 4. Handle all user interactions gracefully
 
+## Version Locking Strategy
+
+**Vector is locked to version 0.40.0-alpine** for stability. This version has been fully validated with our VRL configuration. Upgrading to newer versions may require:
+- VRL syntax updates
+- Type coercion adjustments
+- Error handling modifications
+- Array operation refactoring
+
+**Recommendation:** Stay on 0.40.0 until you have time to thoroughly test newer versions in a staging environment. The configuration is stable and production-ready at this version.
+
 ## Configuration Files
 
-- `docker-compose.yml`: Service definitions
+- `docker-compose.yml`: Service definitions (Vector locked to 0.40.0-alpine)
 - `vector/vector.yml`: Log processing pipeline
 - `loki/loki-config.yml`: Log aggregation configuration
 - `prometheus/prometheus.yml`: Metrics collection

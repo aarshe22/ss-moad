@@ -1,10 +1,10 @@
 # MOAD Changelog
 
-## Version 0.9 (2025-12-14)
+## Version 0.9 (2025-12-15)
 
-### 🎉 Initial Deployment Milestone
+### 🎉 Initial Deployment Milestone - STABLE
 
-**Status:** All containers running successfully, MOAD Manager operational
+**Status:** All containers running successfully and stably, MOAD Manager operational, Vector configuration fully validated
 
 ### Core Infrastructure
 - ✅ All 5 containers running (Vector, Loki, Prometheus, MySQL Exporter, Grafana)
@@ -24,12 +24,13 @@
 - ✅ Lock file mechanism for single instance enforcement
 
 ### Log Processing
-- ✅ Vector log ingestion from CM and PFM applications
-- ✅ Multiline log reconstruction
+- ✅ Vector 0.40.0 log ingestion from CM and PFM applications
+- ✅ Multiline log reconstruction (compatible regex patterns)
 - ✅ Event classification (authentication, forms, integration tasks)
 - ✅ Identifier extraction with MySQL join compatibility
 - ✅ Structured log output for correlation
 - ✅ Loki integration for log aggregation
+- ✅ Full VRL validation compliance (all type coercion, error handling, and array operations fixed)
 
 ### Metrics Collection
 - ✅ Prometheus metrics scraping
@@ -60,10 +61,19 @@
 
 ### Known Working Features
 - All containers start and run reliably
+- Vector 0.40.0 fully validated and stable (upgraded from 0.38.0)
+- All VRL syntax errors resolved (type coercion, error handling, array operations)
 - MOAD Manager provides full stack management
 - Log ingestion and processing operational
 - Metrics collection functional
 - Grafana accessible and dashboards loadable
+
+### Technical Improvements (0.9)
+- **Vector Upgrade**: Upgraded from 0.38.0 to 0.40.0 for better VRL support
+- **VRL Compliance**: Fixed all type coercion issues (string!, to_int with error handling)
+- **Array Operations**: Fixed array concatenation with proper error handling
+- **Regex Compatibility**: Updated multiline patterns to avoid look-ahead/look-behind
+- **Error Handling**: All fallible operations now have explicit error handling
 
 ### Next Steps (Post-0.9)
 - Dashboard customization and optimization

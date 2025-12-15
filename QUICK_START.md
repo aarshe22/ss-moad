@@ -137,6 +137,15 @@ cat data/vector/structured/*.jsonl 2>/dev/null | jq 'select(.mysql_joins != null
 
 ## Troubleshooting
 
+### Vector Container Status
+
+**Vector 0.40.0 is now stable and fully validated.** All VRL syntax, type coercion, and error handling issues have been resolved. The container should start reliably.
+
+If Vector fails to start:
+1. Check logs: `docker logs moad-vector --tail 100`
+2. Verify config: `docker exec moad-vector vector validate --config-dir /etc/vector`
+3. Check log paths: Ensure `/data/moad/logs` is mounted and accessible
+
 ### Using MOAD Manager for Troubleshooting
 
 The MOAD Manager provides built-in troubleshooting tools:
@@ -166,6 +175,7 @@ docker compose restart
 2. Check Vector logs: `docker logs moad-vector`
 3. Verify file permissions on `/data/moad/logs`
 4. Check Vector entrypoint validation: Entrypoint script validates config and log paths before starting
+5. **Note:** Vector is locked to 0.40.0-alpine. If you upgrade, test VRL configuration thoroughly
 
 ### No Data in Grafana
 1. Verify Loki is receiving logs: `docker logs moad-loki`
