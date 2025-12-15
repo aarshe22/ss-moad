@@ -12,7 +12,8 @@ sources:
     include:
       - /data/moad/logs/app1/usr/share/apache-tomcat-8.5.94/logs/catalina.out
     multiline:
-      start_pattern: '^\d{4}-\d{2}-\d{2}'
+      # Tomcat 8 default: 14-Dec-2025 23:59:59.123
+      start_pattern: '^\d{2}-[A-Za-z]{3}-\d{4}'
       mode: continue_through
       condition_pattern: '^[[:space:]]'
       timeout_ms: 1000
@@ -26,7 +27,7 @@ sources:
     include:
       - /data/moad/logs/app2/usr/share/tomcat8/logs/catalina.out
     multiline:
-      start_pattern: '^\d{4}-\d{2}-\d{2}'
+      start_pattern: '^\d{2}-[A-Za-z]{3}-\d{4}'
       mode: continue_through
       condition_pattern: '^[[:space:]]'
       timeout_ms: 1000
@@ -77,7 +78,7 @@ transforms:
       .message = string!(.message)
       
       # Parse timestamp (use parse_timestamp without ! to allow fallback)
-      .timestamp = parse_timestamp(.message, format: "%Y-%m-%d %H:%M:%S") ?? now()
+      .timestamp = parse_timestamp(.message, format: "%d-%b-%Y %H:%M:%S%.3f") ?? now()
       
       # Extract log level
       if match(.message, r'ERROR') {
@@ -289,7 +290,7 @@ transforms:
       .message = string!(.message)
       
       # Same parsing logic as CM
-      .timestamp = parse_timestamp(.message, format: "%Y-%m-%d %H:%M:%S") ?? now()
+      .timestamp = parse_timestamp(.message, format: "%d-%b-%Y %H:%M:%S%.3f") ?? now()
       # Extract log level
       if match(.message, r'ERROR') {
         .level = "error"
