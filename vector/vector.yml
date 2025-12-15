@@ -325,10 +325,13 @@ transforms:
         .auth_result = match(.message, r'(?i)(success|successful|failed|failure|denied|invalid)')
         if is_null(.auth_result) {
           .auth_result = "unknown"
+        } else if !is_string(.auth_result) {
+          # If match returned non-string, convert to string or default
+          .auth_result = "unknown"
         }
-        if match(string!(.auth_result), r'(?i)(success|successful)') {
+        if is_string(.auth_result) && match(string!(.auth_result), r'(?i)(success|successful)') {
           .auth_result = "success"
-        } else if match(string!(.auth_result), r'(?i)(failed|failure|denied|invalid)') {
+        } else if is_string(.auth_result) && match(string!(.auth_result), r'(?i)(failed|failure|denied|invalid)') {
           .auth_result = "failed"
         }
         .school_id = match(.message, r'(?:school|schoolId)[\s:=]+(\d+)')
