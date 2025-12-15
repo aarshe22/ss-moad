@@ -34,8 +34,8 @@ limits_config:
   retention_period: 720h  # 30 days
   max_query_length: 721h
   max_query_parallelism: 32
-  ingestion_rate_mb: 100
-  ingestion_burst_size_mb: 200
+  ingestion_rate_mb: 500  # Increased from 100 to handle high-volume log ingestion
+  ingestion_burst_size_mb: 1000  # Increased from 200 to allow burst ingestion
   max_streams_per_user: 10000
   max_line_size: 256KB
 

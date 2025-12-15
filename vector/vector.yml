@@ -895,15 +895,15 @@ sinks:
       enabled: true
     # Batching and rate limiting to prevent 429 errors
     batch:
-      max_bytes: 10485760  # 10MB per batch
-      max_events: 1000     # Max events per batch
-      timeout_secs: 5      # Send batch every 5 seconds if not full
+      max_bytes: 5242880   # 5MB per batch (reduced to send smaller batches)
+      max_events: 500      # Max 500 events per batch (reduced)
+      timeout_secs: 10     # Send batch every 10 seconds if not full (increased)
     request:
       rate_limit_duration_secs: 1
-      rate_limit_num: 10   # Max 10 requests per second
-      retry_attempts: 3
-      retry_initial_backoff_secs: 1
-      retry_max_duration_secs: 10
+      rate_limit_num: 5    # Max 5 requests per second (reduced to be more conservative)
+      retry_attempts: 5    # Increased retries
+      retry_initial_backoff_secs: 2
+      retry_max_duration_secs: 30
       timeout_secs: 30
 
   # Write structured JSON logs for archival and analysis
