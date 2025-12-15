@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # Vector - Log ingestion and processing
   vector:
-    image: timberio/vector:0.38.0-alpine
+    image: timberio/vector:0.40.0-alpine
     container_name: moad-vector
     entrypoint: ["/bin/sh", "/entrypoint.sh"]
     volumes:
