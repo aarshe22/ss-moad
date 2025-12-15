@@ -453,11 +453,11 @@ transforms:
       parsed = parse_apache_log(.message, format: "combined") ?? {}
       
       .timestamp = parsed.timestamp ?? now()
-      .client_ip = parsed.remote_addr ?? null
-      .http_method = parsed.request_method ?? null
-      .http_path = parsed.request ?? null
-      .http_status = parsed.status ?? null
-      .user_agent = parsed.agent ?? null
+      .client_ip = parsed.remote_addr
+      .http_method = parsed.request_method
+      .http_path = parsed.request
+      .http_status = parsed.status
+      .user_agent = parsed.agent
       
       # Extract school from URL path (for schools.id join)
       .school_subdomain = match(.http_path, r'/([a-z0-9-]+)/')
@@ -492,7 +492,7 @@ transforms:
         # Auth result from HTTP status
         if .http_status == "200" {
           .auth_result = "success"
-        } else if .http_status in ["401", "403"] {
+        } else if .http_status == "401" || .http_status == "403" {
           .auth_result = "failed"
         }
       } else {
@@ -511,11 +511,11 @@ transforms:
     source: |
       parsed = parse_apache_log(.message, format: "combined") ?? {}
       .timestamp = parsed.timestamp ?? now()
-      .client_ip = parsed.remote_addr ?? null
-      .http_method = parsed.request_method ?? null
-      .http_path = parsed.request ?? null
-      .http_status = parsed.status ?? null
-      .user_agent = parsed.agent ?? null
+      .client_ip = parsed.remote_addr
+      .http_method = parsed.request_method
+      .http_path = parsed.request
+      .http_status = parsed.status
+      .user_agent = parsed.agent
       .school_subdomain = match(.http_path, r'/([a-z0-9-]+)/')
       .school_id = match(.http_path, r'(?:school|schoolId)[\s:=/]+(\d+)')
       if !is_null(.school_id) {
@@ -540,7 +540,7 @@ transforms:
         }
         if .http_status == "200" {
           .auth_result = "success"
-        } else if .http_status in ["401", "403"] {
+        } else if .http_status == "401" || .http_status == "403" {
           .auth_result = "failed"
         }
       } else {
