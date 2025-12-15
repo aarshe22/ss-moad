@@ -148,8 +148,10 @@ transforms:
         
         # Extract email (for parents.email join)
         .email = match(.message, r'([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})')
-        if !is_null(.email) {
+        if !is_null(.email) && is_string(.email) {
           .email = downcase(string!(.email))
+        } else if !is_null(.email) && !is_string(.email) {
+          .email = null
         }
         
         # Extract student IDs (for students.id join)
@@ -304,13 +306,17 @@ transforms:
         .event_type = "authentication"
         .event_category = "security"
         .username = match(.message, r'(?:user|username|login)[\s:=]+([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|[a-zA-Z0-9._-]+)')
-        if !is_null(.username) {
+        if !is_null(.username) && is_string(.username) {
           .username = downcase(string!(.username))
           .username_normalized = replace(.username, r'@.*$', "")
+        } else if !is_null(.username) && !is_string(.username) {
+          .username = null
         }
         .email = match(.message, r'([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})')
-        if !is_null(.email) {
+        if !is_null(.email) && is_string(.email) {
           .email = downcase(string!(.email))
+        } else if !is_null(.email) && !is_string(.email) {
+          .email = null
         }
         .client_ip = match(.message, r'\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b')
         .auth_result = match(.message, r'(?i)(success|successful|failed|failure|denied|invalid)')
@@ -331,8 +337,10 @@ transforms:
         .event_category = "integration"
         .sis_identity = match(.message, r'(?:sis|external|powerschool)[\s:=]+([a-zA-Z0-9._-]+)')
         .email = match(.message, r'([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})')
-        if !is_null(.email) {
+        if !is_null(.email) && is_string(.email) {
           .email = downcase(string!(.email))
+        } else if !is_null(.email) && !is_string(.email) {
+          .email = null
         }
         .student_ids = match(.message, r'(?:student|studentId)[\s:=]+(\d+)')
         if is_string(.student_ids) {
@@ -508,9 +516,11 @@ transforms:
         
         # Extract username from path or query params
         .username = match(.http_path, r'(?:user|username|login)[=/]([a-zA-Z0-9._-]+)')
-        if !is_null(.username) {
+        if !is_null(.username) && is_string(.username) {
           .username = downcase(string!(.username))
           .username_normalized = replace(.username, r'@.*$', "")
+        } else if !is_null(.username) && !is_string(.username) {
+          .username = null
         }
         
         # Auth result from HTTP status
@@ -658,12 +668,16 @@ transforms:
       .event_type = "email"
       .event_category = "communication"
       .recipient_email = match(.message, r'to=<([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>')
-      if !is_null(.recipient_email) {
+      if !is_null(.recipient_email) && is_string(.recipient_email) {
         .recipient_email = downcase(string!(.recipient_email))
+      } else if !is_null(.recipient_email) && !is_string(.recipient_email) {
+        .recipient_email = null
       }
       .sender_email = match(.message, r'from=<([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>')
-      if !is_null(.sender_email) {
+      if !is_null(.sender_email) && is_string(.sender_email) {
         .sender_email = downcase(string!(.sender_email))
+      } else if !is_null(.sender_email) && !is_string(.sender_email) {
+        .sender_email = null
       }
       .email_outcome = "unknown"
       if match(.message, r'(?i)(sent|delivered)') {
@@ -705,6 +719,16 @@ transforms:
         if is_null(.app) {
           .app = "unknown"
         }
+      }
+      
+      # Ensure .event_category is always set (required for Loki labels)
+      if is_null(.event_category) {
+        .event_category = "application"  # Default fallback
+      }
+      
+      # Ensure .event_type is always set
+      if is_null(.event_type) {
+        .event_type = "unknown"  # Default fallback
       }
       
       # Ensure consistent field naming for MySQL joins
