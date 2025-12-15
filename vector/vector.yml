@@ -14,7 +14,7 @@ sources:
     multiline:
       start_pattern: '^\d{4}-\d{2}-\d{2}'
       mode: continue_through
-      condition_pattern: '^(?!\d{4}-\d{2}-\d{2})'
+      condition_pattern: '^[^\d]'
       timeout_ms: 1000
     encoding:
       charset: utf8
@@ -28,7 +28,7 @@ sources:
     multiline:
       start_pattern: '^\d{4}-\d{2}-\d{2}'
       mode: continue_through
-      condition_pattern: '^(?!\d{4}-\d{2}-\d{2})'
+      condition_pattern: '^[^\d]'
       timeout_ms: 1000
     encoding:
       charset: utf8
@@ -452,7 +452,11 @@ transforms:
       # Extract fields from HAProxy log format
       parsed = parse_apache_log(.message, format: "combined") ?? {}
       
-      .timestamp = parsed.timestamp ?? now()
+      if !is_null(parsed.timestamp) {
+        .timestamp = parsed.timestamp
+      } else {
+        .timestamp = now()
+      }
       .client_ip = parsed.remote_addr
       .http_method = parsed.request_method
       .http_path = parsed.request
@@ -526,7 +530,11 @@ transforms:
       - haproxy_pfm
     source: |
       parsed = parse_apache_log(.message, format: "combined") ?? {}
-      .timestamp = parsed.timestamp ?? now()
+      if !is_null(parsed.timestamp) {
+        .timestamp = parsed.timestamp
+      } else {
+        .timestamp = now()
+      }
       .client_ip = parsed.remote_addr
       .http_method = parsed.request_method
       .http_path = parsed.request
@@ -680,7 +688,11 @@ transforms:
       
       # User identifiers (for users table joins)
       if !is_null(.username) {
-        .mysql_join_user_name = .username_normalized ?? .username
+        if !is_null(.username_normalized) {
+          .mysql_join_user_name = .username_normalized
+        } else {
+          .mysql_join_user_name = .username
+        }
       }
       if !is_null(.email) {
         .mysql_join_user_email = .email
@@ -738,37 +750,37 @@ transforms:
       # Add join hints for Grafana queries
       .mysql_joins = []
       if !is_null(.mysql_join_user_id) {
-        .mysql_joins = append(.mysql_joins, "users.id")
-        .mysql_joins = append(.mysql_joins, "permissionMan.User.id")
+        .mysql_joins = .mysql_joins + ["users.id"]
+        .mysql_joins = .mysql_joins + ["permissionMan.User.id"]
       }
       if !is_null(.mysql_join_user_name) {
-        .mysql_joins = append(.mysql_joins, "users.userName")
-        .mysql_joins = append(.mysql_joins, "permissionMan.User.userName")
+        .mysql_joins = .mysql_joins + ["users.userName"]
+        .mysql_joins = .mysql_joins + ["permissionMan.User.userName"]
       }
       if !is_null(.mysql_join_user_email) {
-        .mysql_joins = append(.mysql_joins, "users.email")
-        .mysql_joins = append(.mysql_joins, "permissionMan.User.email")
+        .mysql_joins = .mysql_joins + ["users.email"]
+        .mysql_joins = .mysql_joins + ["permissionMan.User.email"]
       }
       if !is_null(.mysql_join_school_id) {
-        .mysql_joins = append(.mysql_joins, "schools.id")
-        .mysql_joins = append(.mysql_joins, "permissionMan.School.id")
+        .mysql_joins = .mysql_joins + ["schools.id"]
+        .mysql_joins = .mysql_joins + ["permissionMan.School.id"]
       }
       if !is_null(.mysql_join_student_id) {
-        .mysql_joins = append(.mysql_joins, "students.id")
-        .mysql_joins = append(.mysql_joins, "permissionMan.Student.id")
+        .mysql_joins = .mysql_joins + ["students.id"]
+        .mysql_joins = .mysql_joins + ["permissionMan.Student.id"]
       }
       if !is_null(.mysql_join_form_id) {
-        .mysql_joins = append(.mysql_joins, "permissionMan.Form.id")
+        .mysql_joins = .mysql_joins + ["permissionMan.Form.id"]
       }
       if !is_null(.mysql_join_user_form_id) {
-        .mysql_joins = append(.mysql_joins, "permissionMan.UserForm.id")
+        .mysql_joins = .mysql_joins + ["permissionMan.UserForm.id"]
       }
       if !is_null(.mysql_join_district_id) {
-        .mysql_joins = append(.mysql_joins, "permissionMan.District.id")
+        .mysql_joins = .mysql_joins + ["permissionMan.District.id"]
       }
       if !is_null(.mysql_join_integration_task_id) {
-        .mysql_joins = append(.mysql_joins, "permissionMan.FullIntegrationTask.id")
-        .mysql_joins = append(.mysql_joins, "permissionMan.DeltaIntegrationTask.id")
+        .mysql_joins = .mysql_joins + ["permissionMan.FullIntegrationTask.id"]
+        .mysql_joins = .mysql_joins + ["permissionMan.DeltaIntegrationTask.id"]
       }
       
       # Standardize timestamp format
