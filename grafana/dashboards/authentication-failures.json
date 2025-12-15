@@ -118,26 +118,30 @@
       {
         "type": "datasource",
         "name": "ds_prom",
-        "query": "Prometheus",
+        "query": "prometheus",
         "current": {
           "text": "Prometheus",
           "value": "Prometheus"
         },
         "hide": 0,
         "label": "Prometheus",
-        "refresh": 1
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false
       },
       {
         "type": "datasource",
         "name": "ds_loki",
-        "query": "Loki",
+        "query": "loki",
         "current": {
           "text": "Loki",
           "value": "Loki"
         },
         "hide": 0,
         "label": "Loki",
-        "refresh": 1
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false
       }
     ]
   }
