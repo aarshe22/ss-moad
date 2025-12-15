@@ -748,39 +748,52 @@ transforms:
       }
       
       # Add join hints for Grafana queries
+      # Build array with explicit error handling for concatenation
       .mysql_joins = []
       if !is_null(.mysql_join_user_id) {
-        .mysql_joins = .mysql_joins + ["users.id"]
-        .mysql_joins = .mysql_joins + ["permissionMan.User.id"]
+        .mysql_joins, err = .mysql_joins + ["users.id"]
+        if is_null(err) {
+          .mysql_joins, err = .mysql_joins + ["permissionMan.User.id"]
+        }
       }
       if !is_null(.mysql_join_user_name) {
-        .mysql_joins = .mysql_joins + ["users.userName"]
-        .mysql_joins = .mysql_joins + ["permissionMan.User.userName"]
+        .mysql_joins, err = .mysql_joins + ["users.userName"]
+        if is_null(err) {
+          .mysql_joins, err = .mysql_joins + ["permissionMan.User.userName"]
+        }
       }
       if !is_null(.mysql_join_user_email) {
-        .mysql_joins = .mysql_joins + ["users.email"]
-        .mysql_joins = .mysql_joins + ["permissionMan.User.email"]
+        .mysql_joins, err = .mysql_joins + ["users.email"]
+        if is_null(err) {
+          .mysql_joins, err = .mysql_joins + ["permissionMan.User.email"]
+        }
       }
       if !is_null(.mysql_join_school_id) {
-        .mysql_joins = .mysql_joins + ["schools.id"]
-        .mysql_joins = .mysql_joins + ["permissionMan.School.id"]
+        .mysql_joins, err = .mysql_joins + ["schools.id"]
+        if is_null(err) {
+          .mysql_joins, err = .mysql_joins + ["permissionMan.School.id"]
+        }
       }
       if !is_null(.mysql_join_student_id) {
-        .mysql_joins = .mysql_joins + ["students.id"]
-        .mysql_joins = .mysql_joins + ["permissionMan.Student.id"]
+        .mysql_joins, err = .mysql_joins + ["students.id"]
+        if is_null(err) {
+          .mysql_joins, err = .mysql_joins + ["permissionMan.Student.id"]
+        }
       }
       if !is_null(.mysql_join_form_id) {
-        .mysql_joins = .mysql_joins + ["permissionMan.Form.id"]
+        .mysql_joins, err = .mysql_joins + ["permissionMan.Form.id"]
       }
       if !is_null(.mysql_join_user_form_id) {
-        .mysql_joins = .mysql_joins + ["permissionMan.UserForm.id"]
+        .mysql_joins, err = .mysql_joins + ["permissionMan.UserForm.id"]
       }
       if !is_null(.mysql_join_district_id) {
-        .mysql_joins = .mysql_joins + ["permissionMan.District.id"]
+        .mysql_joins, err = .mysql_joins + ["permissionMan.District.id"]
       }
       if !is_null(.mysql_join_integration_task_id) {
-        .mysql_joins = .mysql_joins + ["permissionMan.FullIntegrationTask.id"]
-        .mysql_joins = .mysql_joins + ["permissionMan.DeltaIntegrationTask.id"]
+        .mysql_joins, err = .mysql_joins + ["permissionMan.FullIntegrationTask.id"]
+        if is_null(err) {
+          .mysql_joins, err = .mysql_joins + ["permissionMan.DeltaIntegrationTask.id"]
+        }
       }
       
       # Standardize timestamp format
