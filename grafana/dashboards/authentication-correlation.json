@@ -1,0 +1,219 @@
+{
+  "dashboard": {
+    "title": "Authentication Errors – Correlated View",
+    "tags": ["MOAD", "Authentication", "Security", "Correlation"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "templating": {
+      "list": [
+        {
+          "name": "school_id",
+          "type": "query",
+          "datasource": {"type": "loki", "uid": "Loki"},
+          "query": {
+            "query": "label_values({event_type=\"authentication\"}, school_id)",
+            "refId": "StandardVariableQuery"
+          },
+          "current": {
+            "selected": false,
+            "text": "All",
+            "value": "$__all"
+          },
+          "includeAll": true,
+          "multi": true
+        },
+        {
+          "name": "username",
+          "type": "query",
+          "datasource": {"type": "loki", "uid": "Loki"},
+          "query": {
+            "query": "label_values({event_type=\"authentication\"}, username)",
+            "refId": "StandardVariableQuery"
+          },
+          "current": {
+            "selected": false,
+            "text": "All",
+            "value": "$__all"
+          },
+          "includeAll": true,
+          "multi": true
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Auth Failures by Service (CM vs PFM)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(rate({event_type=\"authentication\", auth_result=\"failed\", app=\"CM\", school_id=~\"$school_id\", username=~\"$username\"} | json [5m]))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "CM Failures"
+          },
+          {
+            "expr": "sum(rate({event_type=\"authentication\", auth_result=\"failed\", app=\"PFM\", school_id=~\"$school_id\", username=~\"$username\"} | json [5m]))",
+            "refId": "B",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "PFM Failures"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Auth Failures by School",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "topk(20, sum by (school_id) (count_over_time({event_type=\"authentication\", auth_result=\"failed\", school_id!=\"\"} | json [1h])))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "list"
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "school_id"},
+              "properties": [
+                {"id": "displayName", "value": "School ID"}
+              ]
+            },
+            {
+              "matcher": {"id": "byName", "options": "Value"},
+              "properties": [
+                {"id": "displayName", "value": "Failures (1h)"}
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 3,
+        "title": "Auth Failures by User",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "topk(20, sum by (username) (count_over_time({event_type=\"authentication\", auth_result=\"failed\", username!=\"\"} | json [1h])))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "list"
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Auth Failures by Client IP",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "topk(20, sum by (client_ip) (count_over_time({event_type=\"authentication\", auth_result=\"failed\", client_ip!=\"\"} | json [1h])))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "list"
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "client_ip"},
+              "properties": [
+                {"id": "displayName", "value": "Client IP"}
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 5,
+        "title": "Timeline Correlation Across Services",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "sum(rate({event_type=\"authentication\", auth_result=\"failed\", app=\"CM\"} | json [5m]))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "CM Failures"
+          },
+          {
+            "expr": "sum(rate({event_type=\"authentication\", auth_result=\"failed\", app=\"PFM\"} | json [5m]))",
+            "refId": "B",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "PFM Failures"
+          },
+          {
+            "expr": "mysql_global_status_threads_running",
+            "refId": "C",
+            "datasource": {"type": "prometheus", "uid": "Prometheus"},
+            "legendFormat": "MySQL Threads Running"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops",
+            "custom": {
+              "drawStyle": "line",
+              "fillOpacity": 20
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Top Error Messages Related to Auth",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "topk(15, sum by (message) (count_over_time({event_type=\"authentication\", auth_result=\"failed\", level=\"error\"} | json | line_format \"{{.message}}\" [1h])))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "list"
+            }
+          }
+        }
+      }
+    ]
+  }
+}
+

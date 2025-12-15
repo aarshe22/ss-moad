@@ -1,0 +1,210 @@
+{
+  "dashboard": {
+    "title": "Top Errors & Offenders",
+    "tags": ["MOAD", "Top Errors", "Executive"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "templating": {
+      "list": [
+        {
+          "name": "time_range",
+          "type": "interval",
+          "query": "1h,6h,12h,24h,7d,30d",
+          "current": {
+            "selected": true,
+            "text": "1h",
+            "value": "1h"
+          },
+          "options": [
+            {"text": "1h", "value": "1h", "selected": true},
+            {"text": "6h", "value": "6h", "selected": false},
+            {"text": "12h", "value": "12h", "selected": false},
+            {"text": "24h", "value": "24h", "selected": false},
+            {"text": "7d", "value": "7d", "selected": false},
+            {"text": "30d", "value": "30d", "selected": false}
+          ]
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Top Error Types (All Services)",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "topk(20, sum by (event_type) (count_over_time({level=\"error\"} | json [$time_range])))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "list"
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "event_type"},
+              "properties": [
+                {"id": "displayName", "value": "Error Type"}
+              ]
+            },
+            {
+              "matcher": {"id": "byName", "options": "Value"},
+              "properties": [
+                {"id": "displayName", "value": "Count"},
+                {"id": "custom.width", "value": 120}
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 2,
+        "title": "Top Users by Error Count",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "topk(20, sum by (username) (count_over_time({level=\"error\", username!=\"\"} | json [$time_range])))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "list"
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Top Schools by Error Count",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "topk(20, sum by (school_id) (count_over_time({level=\"error\", school_id!=\"\"} | json [$time_range])))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "list"
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Top Client IPs Causing Errors",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "topk(20, sum by (client_ip) (count_over_time({level=\"error\", client_ip!=\"\"} | json [$time_range])))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "list"
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Error Spikes Over Time",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "sum(rate({level=\"error\"} | json [5m])) by (app)",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "{{app}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1, "color": "yellow"},
+                {"value": 10, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Recurring vs Transient Errors",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "sum(count_over_time({level=\"error\"} | json [1h])) by (event_type)",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "{{event_type}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Error Rate by Event Category",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+        "targets": [
+          {
+            "expr": "sum(count_over_time({level=\"error\"} | json [$time_range])) by (event_category)",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "pieType": "pie",
+          "legend": {
+            "displayMode": "table",
+            "placement": "right"
+          }
+        }
+      }
+    ]
+  }
+}
+

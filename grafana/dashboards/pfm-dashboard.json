@@ -1,0 +1,220 @@
+{
+  "dashboard": {
+    "title": "Parent / Family Manager (PFM) – Application Metrics",
+    "tags": ["MOAD", "PFM", "Application"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "templating": {
+      "list": [
+        {
+          "name": "host",
+          "type": "query",
+          "datasource": {"type": "loki", "uid": "Loki"},
+          "query": {
+            "query": "label_values({app=\"PFM\"}, host)",
+            "refId": "StandardVariableQuery"
+          },
+          "current": {
+            "selected": false,
+            "text": "All",
+            "value": "$__all"
+          },
+          "includeAll": true,
+          "multi": true
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "PFM Request Rate",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(rate({app=\"PFM\", host=~\"$host\", source_component=\"haproxy\"} | json [5m]))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "{{host}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Login Success vs Failure",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(rate({app=\"PFM\", host=~\"$host\", event_type=\"authentication\", auth_result=\"success\"} | json [5m]))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "Success"
+          },
+          {
+            "expr": "sum(rate({app=\"PFM\", host=~\"$host\", event_type=\"authentication\", auth_result=\"failed\"} | json [5m]))",
+            "refId": "B",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "Failed"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Account Lockouts",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "sum(count_over_time({app=\"PFM\", host=~\"$host\", level=\"error\"} |= \"lockout\" | json [1h]))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"}
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1, "color": "yellow"},
+                {"value": 5, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Password Reset Errors",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 8},
+        "targets": [
+          {
+            "expr": "sum(count_over_time({app=\"PFM\", host=~\"$host\", level=\"error\"} |= \"password\" |= \"reset\" | json [1h]))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"}
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1, "color": "yellow"},
+                {"value": 10, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Top PFM Error Messages",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "topk(10, sum by (message) (count_over_time({app=\"PFM\", host=~\"$host\", level=\"error\"} | json | line_format \"{{.message}}\" [1h])))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "format": "table",
+            "instant": true
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Top Schools by PFM Errors",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "topk(10, sum by (school_id) (count_over_time({app=\"PFM\", host=~\"$host\", level=\"error\", school_id!=\"\"} | json [1h])))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "format": "table",
+            "instant": true
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Top Users by PFM Errors",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "targets": [
+          {
+            "expr": "topk(10, sum by (username) (count_over_time({app=\"PFM\", host=~\"$host\", level=\"error\", username!=\"\"} | json [1h])))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "format": "table",
+            "instant": true
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "HTTP Status Distribution",
+        "type": "barchart",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "sum(count_over_time({app=\"PFM\", host=~\"$host\", source_component=\"haproxy\", http_status!=\"\"} | json [1h])) by (http_status)",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "format": "table",
+            "instant": true
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "PFM Error Rate by Category",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+        "targets": [
+          {
+            "expr": "sum(rate({app=\"PFM\", host=~\"$host\", level=\"error\"} | json [5m])) by (event_category)",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "{{event_category}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops"
+          }
+        }
+      }
+    ]
+  }
+}
+

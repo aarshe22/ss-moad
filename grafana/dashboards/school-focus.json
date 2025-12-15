@@ -1,0 +1,191 @@
+{
+  "dashboard": {
+    "title": "School-Centric Error Analysis",
+    "tags": ["MOAD", "School", "Drill-Down"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "templating": {
+      "list": [
+        {
+          "name": "school_id",
+          "type": "query",
+          "datasource": {"type": "loki", "uid": "Loki"},
+          "query": {
+            "query": "label_values(school_id)",
+            "refId": "StandardVariableQuery"
+          },
+          "current": {
+            "selected": false,
+            "text": "Select School",
+            "value": ""
+          },
+          "includeAll": false,
+          "multi": false
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Selected School: $school_id",
+        "type": "text",
+        "gridPos": {"h": 3, "w": 24, "x": 0, "y": 0},
+        "options": {
+          "content": "## School ID: **$school_id**\n\nSelect a school from the dropdown above to analyze errors and activity for that specific school.",
+          "mode": "markdown"
+        }
+      },
+      {
+        "id": 2,
+        "title": "Errors by Service for Selected School",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 3},
+        "targets": [
+          {
+            "expr": "sum(rate({school_id=\"$school_id\", level=\"error\"} | json [5m])) by (app)",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "{{app}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Auth Failures for Selected School",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 3},
+        "targets": [
+          {
+            "expr": "sum(rate({school_id=\"$school_id\", event_type=\"authentication\", auth_result=\"failed\"} | json [5m]))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "Auth Failures/sec"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Top Users Within School by Errors",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 11},
+        "targets": [
+          {
+            "expr": "topk(10, sum by (username) (count_over_time({school_id=\"$school_id\", level=\"error\", username!=\"\"} | json [1h])))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "list"
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Error Categories for Selected School",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 11},
+        "targets": [
+          {
+            "expr": "sum(count_over_time({school_id=\"$school_id\", level=\"error\"} | json [1h])) by (event_category)",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "pieType": "pie",
+          "legend": {
+            "displayMode": "table",
+            "placement": "right"
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Historical Error Trends (7 Days)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 19},
+        "targets": [
+          {
+            "expr": "sum(rate({school_id=\"$school_id\", level=\"error\"} | json [1h]))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "Errors/hour"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops"
+          }
+        },
+        "timeFrom": "7d"
+      },
+      {
+        "id": 7,
+        "title": "Historical Error Trends (30 Days)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 19},
+        "targets": [
+          {
+            "expr": "sum(rate({school_id=\"$school_id\", level=\"error\"} | json [1h]))",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "legendFormat": "Errors/hour"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops"
+          }
+        },
+        "timeFrom": "30d"
+      },
+      {
+        "id": 8,
+        "title": "Event Types for Selected School",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 27},
+        "targets": [
+          {
+            "expr": "sum(count_over_time({school_id=\"$school_id\"} | json [1h])) by (event_type)",
+            "refId": "A",
+            "datasource": {"type": "loki", "uid": "Loki"},
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "list"
+            }
+          }
+        }
+      }
+    ]
+  }
+}
+
