@@ -1,6 +1,6 @@
 # MOAD - Mother Of All Dashboards
 
-**Version 0.9** - Initial deployment milestone achieved: All containers running stably, Vector 0.40.0 fully validated, MOAD Manager operational.
+**Version 0.91** - Initial deployment milestone achieved: All containers running stably, Vector 0.40.0 fully validated, MOAD Manager operational.
 
 A unified observability and analytics platform for SchoolSoft operations, providing a single source of truth across logs, metrics, and relational data.
 
@@ -267,13 +267,15 @@ The script will:
 
 ## Version Locking Strategy
 
-**Vector is locked to version 0.40.0-alpine** for stability. This version has been fully validated with our VRL configuration. Upgrading to newer versions may require:
-- VRL syntax updates
-- Type coercion adjustments
-- Error handling modifications
-- Array operation refactoring
+**All containers are locked to specific versions** for stability and reproducibility. Each version has been validated with our configuration:
 
-**Recommendation:** Stay on 0.40.0 until you have time to thoroughly test newer versions in a staging environment. The configuration is stable and production-ready at this version.
+- **Vector 0.40.0-alpine**: VRL configuration fully validated. Upgrading may require VRL syntax updates, type coercion adjustments, error handling modifications, and array operation refactoring.
+- **Loki 2.9.0**: Config format validated. Upgrading may require config file changes.
+- **Prometheus v2.48.0**: Config and command-line arguments validated. Major version upgrades may have breaking changes.
+- **MySQL Exporter v0.15.1**: Entrypoint script and `.my.cnf` configuration validated. This version was particularly difficult to configure - upgrading may require connection method changes.
+- **Grafana 12.3.0**: Dashboards and provisioning config validated. Major version upgrades may require dashboard JSON updates.
+
+**Recommendation:** Stay on current versions until you have time to thoroughly test newer versions in a staging environment. The entire stack is stable and production-ready at these versions.
 
 ## Configuration Files
 

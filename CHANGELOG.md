@@ -1,5 +1,24 @@
 # MOAD Changelog
 
+## Version 0.91 (2025-12-15)
+
+### 🔒 Version Locking Complete
+
+**Status:** All containers version-locked for stability and reproducibility
+
+### Changes
+- ✅ All container versions locked with documentation
+- ✅ Version locking strategy documented in README
+- ✅ Upgrade warnings added to docker-compose.yml for all services
+- ✅ Stability improvements: Vector, Loki, Prometheus, MySQL Exporter, Grafana all locked
+
+### Version Locks Applied
+- Vector: 0.40.0-alpine (VRL configuration validated)
+- Loki: 2.9.0 (config format validated)
+- Prometheus: v2.48.0 (config and CLI args validated)
+- MySQL Exporter: v0.15.1 (entrypoint script validated)
+- Grafana: 12.3.0 (dashboards and provisioning validated)
+
 ## Version 0.9 (2025-12-15)
 
 ### 🎉 Initial Deployment Milestone - STABLE

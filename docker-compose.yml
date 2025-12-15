@@ -28,6 +28,8 @@ services:
       start_period: 10s
 
   # Loki - Log aggregation
+  # Version locked to 2.9.0 for stability
+  # Config format validated for this version - upgrading may require config changes
   loki:
     image: grafana/loki:2.9.0
     container_name: moad-loki
@@ -49,6 +51,8 @@ services:
       start_period: 10s
 
   # Prometheus - Metrics collection
+  # Version locked to v2.48.0 for stability
+  # Config and command-line arguments validated for this version
   prometheus:
     image: prom/prometheus:v2.48.0
     container_name: moad-prometheus
@@ -76,6 +80,9 @@ services:
       start_period: 10s
 
   # MySQL Exporter - Database metrics
+  # Version locked to v0.15.1 for stability
+  # This version was validated with our entrypoint script and .my.cnf configuration
+  # Upgrading may require changes to connection method or entrypoint script
   # Uses read-only user (configurable via MYSQL_MOAD_RO_USER) with access to:
   # - schoolsoft.* (SELECT)
   # - permissionMan.* (SELECT)
@@ -107,6 +114,9 @@ services:
     # Note: env_file explicitly loads .env to ensure environment variables are available
 
   # Grafana - Visualization and dashboards
+  # Version locked to 12.3.0 for stability
+  # Dashboards and provisioning config validated for this version
+  # Major version upgrades may require dashboard JSON updates
   grafana:
     image: grafana/grafana:12.3.0
     container_name: moad-grafana
