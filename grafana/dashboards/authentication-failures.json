@@ -120,6 +120,7 @@
         "name": "ds_prom",
         "query": "prometheus",
         "current": {
+          "selected": true,
           "text": "Prometheus",
           "value": "Prometheus"
         },
@@ -134,6 +135,7 @@
         "name": "ds_loki",
         "query": "loki",
         "current": {
+          "selected": true,
           "text": "Loki",
           "value": "Loki"
         },
