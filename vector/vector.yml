@@ -12,10 +12,10 @@ sources:
     include:
       - /data/moad/logs/app1/usr/share/apache-tomcat-8.5.94/logs/catalina.out
     multiline:
-      # Tomcat 8 default: 14-Dec-2025 23:59:59.123
-      start_pattern: '^\d{2}-[A-Za-z]{3}-\d{4}'
-      mode: continue_through
-      condition_pattern: '^[[:space:]]'
+      # Treat each timestamped line as the start of an event; everything until the next timestamp stays with it
+      # Example: 14-Dec-2025 02:05:11.931 SEVERE [...]
+      start_pattern: '^\d{2}-[A-Za-z]{3}-\d{4}\s+\d{2}:\d{2}:\d{2}'
+      mode: halt_before
       timeout_ms: 1000
     encoding:
       charset: utf8
@@ -27,9 +27,8 @@ sources:
     include:
       - /data/moad/logs/app2/usr/share/tomcat8/logs/catalina.out
     multiline:
-      start_pattern: '^\d{2}-[A-Za-z]{3}-\d{4}'
-      mode: continue_through
-      condition_pattern: '^[[:space:]]'
+      start_pattern: '^\d{2}-[A-Za-z]{3}-\d{4}\s+\d{2}:\d{2}:\d{2}'
+      mode: halt_before
       timeout_ms: 1000
     encoding:
       charset: utf8
@@ -76,6 +75,12 @@ transforms:
     source: |
       # Ensure .message is a string for all operations
       .message = string!(.message)
+
+      # Tag the app and source up-front so labels are present even if parsing fails later
+      .app = "CM"
+      .source_component = "tomcat"
+      .event_category = "application"
+      .event_type = "unknown"
       
       # Parse timestamp (use parse_timestamp without ! to allow fallback)
       .timestamp = parse_timestamp(.message, format: "%d-%b-%Y %H:%M:%S%.3f") ?? now()
@@ -288,6 +293,12 @@ transforms:
     source: |
       # Ensure .message is a string for all operations
       .message = string!(.message)
+
+      # Tag the app and source up-front so labels are present even if parsing fails later
+      .app = "PFM"
+      .source_component = "tomcat"
+      .event_category = "application"
+      .event_type = "unknown"
       
       # Same parsing logic as CM
       .timestamp = parse_timestamp(.message, format: "%d-%b-%Y %H:%M:%S%.3f") ?? now()
