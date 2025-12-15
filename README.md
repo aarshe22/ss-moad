@@ -1,6 +1,6 @@
 # MOAD - Mother Of All Dashboards
 
-**Version 0.91** - Initial deployment milestone achieved: All containers running stably, Vector 0.40.0 fully validated, MOAD Manager operational.
+**Version 0.92** - Tomcat multiline ingestion fixed (single-event stack traces), MySQL/Grafana wiring validated, docs and tooling cleaned.
 
 A unified observability and analytics platform for SchoolSoft operations, providing a single source of truth across logs, metrics, and relational data.
 

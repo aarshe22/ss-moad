@@ -1,5 +1,13 @@
 # MOAD Changelog
 
+## Version 0.92 (2025-12-15)
+
+### 🛠 Stability & Cleanup
+- ✅ Tomcat multiline ingestion fixed (single-event stack traces via timestamp-based boundaries)
+- ✅ MySQL/Grafana wiring validated; dashboards ready once Prometheus scrapes MySQL exporter
+- ✅ Documentation refreshed with latest configuration and guidance
+- ✅ Removed temporary check/find/diagnostic scripts and ad-hoc markdown helpers
+
 ## Version 0.91 (2025-12-15)
 
 ### 🔒 Version Locking Complete

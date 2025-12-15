@@ -478,7 +478,7 @@ If a label doesn't appear in dropdowns:
 
 ## Version Information
 
-- **MOAD Version**: 0.91
+- **MOAD Version**: 0.92
 - **Grafana Version**: 12.3.0
 - **Loki Version**: 2.9.0
 - **Vector Version**: 0.40.0-alpine

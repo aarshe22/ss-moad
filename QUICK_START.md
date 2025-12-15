@@ -1,6 +1,6 @@
 # MOAD Quick Start Guide
 
-**MOAD Version 0.91**
+**MOAD Version 0.92**
 
 ## Prerequisites
 
