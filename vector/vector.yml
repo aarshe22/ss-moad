@@ -11,6 +11,7 @@ sources:
     type: file
     include:
       - /data/moad/logs/app1/usr/share/apache-tomcat-8.5.94/logs/catalina.out
+    start_at_beginning: true
     multiline:
       # Treat each timestamped line as the start of an event; everything until the next timestamp stays with it
       # Example: 14-Dec-2025 02:05:11.931 SEVERE [...]
@@ -27,6 +28,7 @@ sources:
     type: file
     include:
       - /data/moad/logs/app2/usr/share/tomcat8/logs/catalina.out
+    start_at_beginning: true
     multiline:
       start_pattern: '^\d{2}-[A-Za-z]{3}-\d{4}\s+\d{2}:\d{2}:\d{2}'
       mode: halt_before
@@ -41,6 +43,7 @@ sources:
     type: file
     include:
       - /data/moad/logs/app1/var/log/haproxy.log
+    start_at_beginning: true
     host_key: host
 
   # HAProxy logs - PFM
@@ -48,6 +51,7 @@ sources:
     type: file
     include:
       - /data/moad/logs/app2/var/log/haproxy.log
+    start_at_beginning: true
     host_key: host
 
   # Postfix mail logs - CM
